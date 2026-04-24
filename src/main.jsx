@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Baby,
+  Bell,
   CalendarDays,
+  CheckCircle2,
   Clock3,
-  Cloud,
   Droplets,
   Languages,
   LogOut,
@@ -18,13 +19,13 @@ import {
   Sparkles,
   Trash2,
   UserRound,
+  X,
 } from "lucide-react";
 import "./styles.css";
 
 const entryTypes = {
   feeding: { icon: Milk, color: "rose", fields: [{ name: "method", type: "select", options: ["breast", "bottle", "formula", "pumped"] }, { name: "amount", placeholder: { ar: "60 مل أو 20 دقيقة", en: "60 ml or 20 min" } }, { name: "side", type: "select", options: ["both", "left", "right", "na"] }] },
   diaper: { icon: Droplets, color: "teal", fields: [{ name: "diaperType", type: "select", options: ["wet", "dirty", "wetDirty", "dry"] }, { name: "rash", type: "select", options: ["normal", "redness", "cream"] }] },
-  medicine: { icon: Pill, color: "violet", fields: [{ name: "medicine", placeholder: { ar: "فيتامين د", en: "Vitamin D" } }, { name: "dose", placeholder: { ar: "نقطة واحدة أو 0.5 مل", en: "1 drop or 0.5 ml" } }] },
   sleep: { icon: Moon, color: "indigo", fields: [{ name: "duration", placeholder: { ar: "45 دقيقة", en: "45 min" } }, { name: "place", type: "select", options: ["bassinet", "crib", "held", "stroller"] }] },
   note: { icon: NotebookPen, color: "amber", fields: [{ name: "note", placeholder: { ar: "المزاج، الحرارة، الحمام، الموعد...", en: "Mood, temperature, bath, appointment..." } }] },
 };
@@ -41,12 +42,15 @@ const copy = {
     saveBaby: "حفظ الطفل",
     updateBaby: "تحديث الطفل",
     cancel: "إلغاء",
+    close: "إغلاق",
     babyName: "اسم الطفل",
     babyAge: "العمر",
     babyAgePlaceholder: "مثال: 3 أشهر",
     gender: "النوع",
     selected: "الحالي",
     deleteBaby: "حذف الطفل",
+    todayTab: "اليوم",
+    medsTab: "الأدوية",
     addEvent: "إضافة حدث",
     time: "الوقت",
     extraNote: "ملاحظة إضافية",
@@ -56,11 +60,11 @@ const copy = {
     timeline: "سجل اليوم",
     reset: "مسح اليوم",
     empty: "لا توجد أحداث لهذا الطفل في هذا اليوم.",
-    loading: "جار التحميل من Neon...",
-    synced: "تمت المزامنة مع Neon",
-    saved: "تم الحفظ في Neon",
+    loading: "جار التحميل...",
+    synced: "تمت المزامنة",
+    saved: "تم الحفظ",
     offline: "غير متصل",
-    loadError: "لم نتمكن من تحميل البيانات. تأكدي من اتصال قاعدة البيانات.",
+    loadError: "لم نتمكن من تحميل البيانات. تأكدي من الاتصال.",
     babyError: "لم يتم حفظ بيانات الطفل.",
     lastBabyError: "يجب أن يبقى طفل واحد على الأقل.",
     saveEventError: "لم يتم حفظ هذا الحدث.",
@@ -79,8 +83,24 @@ const copy = {
     language: "English",
     authError: "لم تنجح العملية. تأكدي من البريد وكلمة المرور.",
     passwordHint: "كلمة المرور 6 أحرف على الأقل.",
-    type: { feeding: "رضاعة", diaper: "حفاض", medicine: "دواء", sleep: "نوم", note: "ملاحظة" },
-    fields: { method: "الطريقة", amount: "الكمية", side: "الجهة", diaperType: "النوع", rash: "الجلد", medicine: "الدواء", dose: "الجرعة", duration: "المدة", place: "المكان", note: "ملاحظة" },
+    medTitle: "جدول الأدوية",
+    addMedicine: "إضافة دواء",
+    medicineName: "اسم الدواء",
+    dose: "الجرعة",
+    timesPerDay: "مرات في اليوم",
+    intervalHours: "كل كام ساعة",
+    firstTime: "أول ميعاد",
+    dueNow: "أدوية مستحقة الآن",
+    noDueMeds: "لا توجد أدوية مستحقة الآن.",
+    markTaken: "تم أخذ الدواء",
+    activeMeds: "الأدوية المضافة",
+    noMeds: "لا توجد أدوية مضافة لهذا الطفل.",
+    medSaved: "تمت إضافة الدواء والمواعيد",
+    medError: "لم يتم حفظ الدواء.",
+    takenError: "لم يتم تأكيد الجرعة.",
+    deleteMed: "حذف الدواء",
+    type: { feeding: "رضاعة", diaper: "حفاض", sleep: "نوم", note: "ملاحظة", medicine: "دواء" },
+    fields: { method: "الطريقة", amount: "الكمية", side: "الجهة", diaperType: "النوع", rash: "الجلد", duration: "المدة", place: "المكان", note: "ملاحظة", medicine: "الدواء", dose: "الجرعة" },
     genders: { girl: "بنت", boy: "ولد", other: "آخر" },
     options: { breast: "رضاعة طبيعية", bottle: "ببرونة", formula: "حليب صناعي", pumped: "حليب مشفوط", both: "الجهتان", left: "يسار", right: "يمين", na: "لا ينطبق", wet: "بول", dirty: "براز", wetDirty: "بول وبراز", dry: "فحص جاف", normal: "طبيعي", redness: "احمرار", cream: "تم استخدام كريم", bassinet: "سرير صغير", crib: "سرير", held: "على اليد", stroller: "عربة" },
   },
@@ -95,12 +115,15 @@ const copy = {
     saveBaby: "Save baby",
     updateBaby: "Update baby",
     cancel: "Cancel",
+    close: "Close",
     babyName: "Baby name",
     babyAge: "Age",
     babyAgePlaceholder: "Example: 3 months",
     gender: "Gender",
     selected: "Selected",
     deleteBaby: "Delete baby",
+    todayTab: "Today",
+    medsTab: "Medicine",
     addEvent: "Add care event",
     time: "Time",
     extraNote: "Extra note",
@@ -110,11 +133,11 @@ const copy = {
     timeline: "Today timeline",
     reset: "Reset",
     empty: "No events yet for this baby on this day.",
-    loading: "Loading from Neon...",
-    synced: "Synced with Neon",
-    saved: "Saved to Neon",
+    loading: "Loading...",
+    synced: "Synced",
+    saved: "Saved",
     offline: "Offline",
-    loadError: "Could not load data. Check the database connection.",
+    loadError: "Could not load data. Check the connection.",
     babyError: "Baby details could not be saved.",
     lastBabyError: "At least one baby must remain.",
     saveEventError: "This event could not be saved.",
@@ -133,14 +156,31 @@ const copy = {
     language: "العربية",
     authError: "Authentication failed. Check your email and password.",
     passwordHint: "Password must be at least 6 characters.",
-    type: { feeding: "Feeding", diaper: "Diaper", medicine: "Medicine", sleep: "Sleep", note: "Note" },
-    fields: { method: "Method", amount: "Amount", side: "Side", diaperType: "Type", rash: "Skin", medicine: "Medicine", dose: "Dose", duration: "Duration", place: "Place", note: "Note" },
+    medTitle: "Medicine schedule",
+    addMedicine: "Add medicine",
+    medicineName: "Medicine name",
+    dose: "Dose",
+    timesPerDay: "Times per day",
+    intervalHours: "Every how many hours",
+    firstTime: "First time",
+    dueNow: "Medicine due now",
+    noDueMeds: "No medicine is due now.",
+    markTaken: "Mark as taken",
+    activeMeds: "Added medicines",
+    noMeds: "No medicines added for this baby.",
+    medSaved: "Medicine and schedule added",
+    medError: "Medicine could not be saved.",
+    takenError: "Dose could not be confirmed.",
+    deleteMed: "Delete medicine",
+    type: { feeding: "Feeding", diaper: "Diaper", sleep: "Sleep", note: "Note", medicine: "Medicine" },
+    fields: { method: "Method", amount: "Amount", side: "Side", diaperType: "Type", rash: "Skin", duration: "Duration", place: "Place", note: "Note", medicine: "Medicine", dose: "Dose" },
     genders: { girl: "Girl", boy: "Boy", other: "Other" },
     options: { breast: "Breast", bottle: "Bottle", formula: "Formula", pumped: "Pumped milk", both: "Both", left: "Left", right: "Right", na: "N/A", wet: "Wet", dirty: "Dirty", wetDirty: "Wet + dirty", dry: "Dry check", normal: "Normal", redness: "Redness", cream: "Rash cream used", bassinet: "Bassinet", crib: "Crib", held: "Held", stroller: "Stroller" },
   },
 };
 
 const blankBaby = { name: "", age: "", gender: "girl" };
+const blankMedicine = { name: "", dose: "", timesPerDay: 1, intervalHours: 24, startTime: "08:00" };
 
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
@@ -161,10 +201,15 @@ function App() {
   const [selectedBabyId, setSelectedBabyId] = useState("");
   const [babyForm, setBabyForm] = useState(blankBaby);
   const [editingBabyId, setEditingBabyId] = useState("");
+  const [isBabyModalOpen, setBabyModalOpen] = useState(false);
+  const [view, setView] = useState("today");
   const [careDate, setCareDate] = useState(todayKey());
   const [activeType, setActiveType] = useState("feeding");
   const [entries, setEntries] = useState([]);
   const [form, setForm] = useState({ time: currentTime(), note: "" });
+  const [medicines, setMedicines] = useState([]);
+  const [dueDoses, setDueDoses] = useState([]);
+  const [medicineForm, setMedicineForm] = useState(blankMedicine);
   const [status, setStatus] = useState(copy[language].loading);
   const [error, setError] = useState("");
   const [isBusy, setIsBusy] = useState(false);
@@ -189,7 +234,10 @@ function App() {
   }, [user?.id]);
 
   useEffect(() => {
-    if (user && selectedBabyId) loadDay(careDate, selectedBabyId);
+    if (user && selectedBabyId) {
+      loadDay(careDate, selectedBabyId);
+      loadMedicines(selectedBabyId);
+    }
   }, [careDate, selectedBabyId, user?.id]);
 
   async function checkSession() {
@@ -220,8 +268,6 @@ function App() {
   }
 
   async function loadDay(date, babyId) {
-    setStatus(t.loading);
-    setError("");
     try {
       const data = await apiRequest(`/api/day?date=${date}&babyId=${babyId}`);
       setEntries(Array.isArray(data.entries) ? data.entries : []);
@@ -229,7 +275,16 @@ function App() {
     } catch {
       setEntries([]);
       setError(t.loadError);
-      setStatus(t.offline);
+    }
+  }
+
+  async function loadMedicines(babyId) {
+    try {
+      const data = await apiRequest(`/api/medicines?babyId=${babyId}`);
+      setMedicines(data.medicines || []);
+      setDueDoses(data.dueDoses || []);
+    } catch {
+      setError(t.loadError);
     }
   }
 
@@ -256,7 +311,20 @@ function App() {
     setUser(null);
     setBabies([]);
     setEntries([]);
+    setMedicines([]);
+    setDueDoses([]);
     setSelectedBabyId("");
+  }
+
+  function openBabyModal(baby = null) {
+    if (baby) {
+      setEditingBabyId(baby.id);
+      setBabyForm({ name: baby.name, age: baby.age || "", gender: baby.gender || "girl" });
+    } else {
+      setEditingBabyId("");
+      setBabyForm(blankBaby);
+    }
+    setBabyModalOpen(true);
   }
 
   async function saveBaby(event) {
@@ -268,26 +336,20 @@ function App() {
 
     try {
       const data = await apiRequest("/api/babies", { method, body: JSON.stringify(body) });
-      setBabies((current) => {
-        if (editingBabyId) {
-          return current.map((baby) => baby.id === data.baby.id ? data.baby : baby);
-        }
-        return [...current, data.baby];
-      });
+      setBabies((current) => editingBabyId
+        ? current.map((baby) => baby.id === data.baby.id ? data.baby : baby)
+        : [...current, data.baby]
+      );
       setSelectedBabyId(data.baby.id);
       setBabyForm(blankBaby);
       setEditingBabyId("");
+      setBabyModalOpen(false);
       setStatus(t.saved);
     } catch {
       setError(t.babyError);
     } finally {
       setIsBusy(false);
     }
-  }
-
-  function editBaby(baby) {
-    setEditingBabyId(baby.id);
-    setBabyForm({ name: baby.name, age: baby.age || "", gender: baby.gender || "girl" });
   }
 
   async function deleteBaby(id) {
@@ -302,10 +364,6 @@ function App() {
     } catch {
       setError(t.lastBabyError);
     }
-  }
-
-  function updateForm(name, value) {
-    setForm((current) => ({ ...current, [name]: value }));
   }
 
   async function addEntry(event) {
@@ -361,10 +419,55 @@ function App() {
     }
   }
 
+  async function addMedicine(event) {
+    event.preventDefault();
+    if (!selectedBabyId) return;
+    setIsBusy(true);
+    setError("");
+
+    try {
+      await apiRequest("/api/medicines", {
+        method: "POST",
+        body: JSON.stringify({ ...medicineForm, babyId: selectedBabyId }),
+      });
+      setMedicineForm(blankMedicine);
+      await loadMedicines(selectedBabyId);
+      setStatus(t.medSaved);
+    } catch {
+      setError(t.medError);
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function markDoseTaken(doseId) {
+    try {
+      await apiRequest("/api/medicines", {
+        method: "PUT",
+        body: JSON.stringify({ doseId }),
+      });
+      await loadMedicines(selectedBabyId);
+      await loadDay(careDate, selectedBabyId);
+      setStatus(t.saved);
+    } catch {
+      setError(t.takenError);
+    }
+  }
+
+  async function deleteMedicine(id) {
+    try {
+      await apiRequest(`/api/medicines?id=${id}`, { method: "DELETE" });
+      await loadMedicines(selectedBabyId);
+      setStatus(t.saved);
+    } catch {
+      setError(t.medError);
+    }
+  }
+
   const summary = useMemo(() => Object.keys(entryTypes).reduce((acc, type) => {
     acc[type] = entries.filter((entry) => entry.type === type).length;
     return acc;
-  }, {}), [entries]);
+  }, { medicine: entries.filter((entry) => entry.type === "medicine").length }), [entries]);
 
   const sortedEntries = useMemo(() => [...entries].sort((a, b) => b.time.localeCompare(a.time)), [entries]);
 
@@ -394,10 +497,13 @@ function App() {
         </div>
       </section>
 
-      <div className={`sync-banner ${error ? "error" : ""}`}><Cloud size={18} /><span>{error || status}</span></div>
+      <div className={`sync-banner ${error ? "error" : ""}`}><span>{error || status}</span></div>
 
       <section className="baby-manager" aria-label={t.babies}>
-        <div className="section-title"><Baby size={20} /><h2>{t.babies}</h2></div>
+        <div className="section-title split-title">
+          <div className="section-title"><Baby size={20} /><h2>{t.babies}</h2></div>
+          <button className="primary-action compact-action" type="button" onClick={() => openBabyModal()}><Plus size={18} />{t.addBaby}</button>
+        </div>
         <div className="baby-list">
           {babies.map((baby) => (
             <article className={`baby-card ${selectedBabyId === baby.id ? "active" : ""}`} key={baby.id}>
@@ -407,32 +513,73 @@ function App() {
                 {selectedBabyId === baby.id && <small>{t.selected}</small>}
               </button>
               <div className="baby-actions">
-                <button className="icon-button" type="button" aria-label={t.editBaby} onClick={() => editBaby(baby)}><Pencil size={17} /></button>
+                <button className="icon-button" type="button" aria-label={t.editBaby} onClick={() => openBabyModal(baby)}><Pencil size={17} /></button>
                 <button className="icon-button" type="button" aria-label={t.deleteBaby} onClick={() => deleteBaby(baby.id)}><Trash2 size={17} /></button>
               </div>
             </article>
           ))}
         </div>
-        <form className="baby-form" onSubmit={saveBaby}>
-          <label><span>{t.babyName}</span><input required value={babyForm.name} onChange={(event) => setBabyForm((current) => ({ ...current, name: event.target.value }))} /></label>
-          <label><span>{t.babyAge}</span><input value={babyForm.age} placeholder={t.babyAgePlaceholder} onChange={(event) => setBabyForm((current) => ({ ...current, age: event.target.value }))} /></label>
-          <label><span>{t.gender}</span><select value={babyForm.gender} onChange={(event) => setBabyForm((current) => ({ ...current, gender: event.target.value }))}>{Object.entries(t.genders).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
-          <button className="primary-action" type="submit" disabled={isBusy}><Plus size={20} />{editingBabyId ? t.updateBaby : t.saveBaby}</button>
-          {editingBabyId && <button className="ghost-action" type="button" onClick={() => { setEditingBabyId(""); setBabyForm(blankBaby); }}>{t.cancel}</button>}
-        </form>
       </section>
 
-      <section className="baby-panel" aria-label={t.babies}>
+      {isBabyModalOpen && (
+        <Modal title={editingBabyId ? t.editBaby : t.addBaby} onClose={() => setBabyModalOpen(false)} t={t}>
+          <form className="modal-form" onSubmit={saveBaby}>
+            <label><span>{t.babyName}</span><input required value={babyForm.name} onChange={(event) => setBabyForm((current) => ({ ...current, name: event.target.value }))} /></label>
+            <label><span>{t.babyAge}</span><input value={babyForm.age} placeholder={t.babyAgePlaceholder} onChange={(event) => setBabyForm((current) => ({ ...current, age: event.target.value }))} /></label>
+            <label><span>{t.gender}</span><select value={babyForm.gender} onChange={(event) => setBabyForm((current) => ({ ...current, gender: event.target.value }))}>{Object.entries(t.genders).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
+            <button className="primary-action" type="submit" disabled={isBusy}><Plus size={20} />{editingBabyId ? t.updateBaby : t.saveBaby}</button>
+          </form>
+        </Modal>
+      )}
+
+      {dueDoses.length > 0 && (
+        <section className="due-warning">
+          <div className="section-title"><Bell size={21} /><h2>{t.dueNow}</h2></div>
+          <div className="due-list">
+            {dueDoses.map((dose) => (
+              <article className="due-card" key={dose.id}>
+                <div>
+                  <strong>{dose.name}</strong>
+                  <span>{dose.dose} - {formatDateTime(dose.scheduled_at, language)}</span>
+                </div>
+                <button className="primary-action compact-action" type="button" onClick={() => markDoseTaken(dose.id)}><CheckCircle2 size={18} />{t.markTaken}</button>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <div className="view-tabs">
+        <button className={view === "today" ? "active" : ""} type="button" onClick={() => setView("today")}><Clock3 size={18} />{t.todayTab}</button>
+        <button className={view === "medicines" ? "active" : ""} type="button" onClick={() => setView("medicines")}><Pill size={18} />{t.medsTab}</button>
+      </div>
+
+      {view === "today" ? (
+        <TodayView activeConfig={activeConfig} activeType={activeType} entries={sortedEntries} form={form} isBusy={isBusy} language={language} onAdd={addEntry} onRemove={removeEntry} onReset={resetDay} setActiveType={setActiveType} setForm={setForm} summary={summary} t={t} />
+      ) : (
+        <MedicineView deleteMedicine={deleteMedicine} dueDoses={dueDoses} isBusy={isBusy} markDoseTaken={markDoseTaken} medicineForm={medicineForm} medicines={medicines} setMedicineForm={setMedicineForm} submit={addMedicine} t={t} />
+      )}
+    </main>
+  );
+}
+
+function TodayView({ activeConfig, activeType, entries, form, isBusy, language, onAdd, onRemove, onReset, setActiveType, setForm, summary, t }) {
+  function updateForm(name, value) {
+    setForm((current) => ({ ...current, [name]: value }));
+  }
+
+  return (
+    <>
+      <section className="baby-panel" aria-label={t.todayTab}>
         <div className="summary-strip">
-          {Object.entries(entryTypes).map(([type, config]) => {
+          {[...Object.entries(entryTypes), ["medicine", { icon: Pill, color: "violet" }]].map(([type, config]) => {
             const Icon = config.icon;
             return <div className={`summary-item ${config.color}`} key={type}><Icon size={20} /><strong>{summary[type] || 0}</strong><span>{t.type[type]}</span></div>;
           })}
         </div>
       </section>
-
       <section className="workspace">
-        <form className="logger" onSubmit={addEntry}>
+        <form className="logger" onSubmit={onAdd}>
           <div className="section-title"><Sparkles size={20} /><h2>{t.addEvent}</h2></div>
           <div className="type-grid" role="tablist" aria-label={t.addEvent}>
             {Object.entries(entryTypes).map(([type, config]) => {
@@ -444,25 +591,44 @@ function App() {
           {activeConfig.fields.map((field) => (
             <label key={field.name}>
               <span>{t.fields[field.name]}</span>
-              {field.type === "select" ? (
-                <select value={form[field.name] || field.options[0]} onChange={(event) => updateForm(field.name, event.target.value)}>
-                  {field.options.map((option) => <option key={option} value={option}>{t.options[option]}</option>)}
-                </select>
-              ) : (
-                <input value={form[field.name] || ""} placeholder={field.placeholder?.[language]} onChange={(event) => updateForm(field.name, event.target.value)} />
-              )}
+              {field.type === "select" ? <select value={form[field.name] || field.options[0]} onChange={(event) => updateForm(field.name, event.target.value)}>{field.options.map((option) => <option key={option} value={option}>{t.options[option]}</option>)}</select> : <input value={form[field.name] || ""} placeholder={field.placeholder?.[language]} onChange={(event) => updateForm(field.name, event.target.value)} />}
             </label>
           ))}
           <label><span>{t.extraNote}</span><textarea value={form.note || ""} placeholder={t.notePlaceholder} onChange={(event) => updateForm("note", event.target.value)} /></label>
-          <button className="primary-action" type="submit" disabled={isBusy || !selectedBabyId}><Plus size={20} />{isBusy ? t.saving : t.addToDay}</button>
+          <button className="primary-action" type="submit" disabled={isBusy}><Plus size={20} />{isBusy ? t.saving : t.addToDay}</button>
         </form>
-
         <section className="timeline" aria-label={t.timeline}>
-          <div className="section-title timeline-title"><Clock3 size={20} /><h2>{t.timeline}</h2><button className="ghost-action" type="button" onClick={resetDay} disabled={!selectedBabyId}><RotateCcw size={17} />{t.reset}</button></div>
-          {sortedEntries.length === 0 ? <div className="empty-state"><Baby size={34} /><p>{t.empty}</p></div> : <div className="event-list">{sortedEntries.map((entry) => <CareEvent entry={entry} key={entry.id} onRemove={removeEntry} t={t} />)}</div>}
+          <div className="section-title timeline-title"><Clock3 size={20} /><h2>{t.timeline}</h2><button className="ghost-action" type="button" onClick={onReset}><RotateCcw size={17} />{t.reset}</button></div>
+          {entries.length === 0 ? <div className="empty-state"><Baby size={34} /><p>{t.empty}</p></div> : <div className="event-list">{entries.map((entry) => <CareEvent entry={entry} key={entry.id} onRemove={onRemove} t={t} />)}</div>}
         </section>
       </section>
-    </main>
+    </>
+  );
+}
+
+function MedicineView({ deleteMedicine, dueDoses, isBusy, markDoseTaken, medicineForm, medicines, setMedicineForm, submit, t }) {
+  return (
+    <section className="medicine-page">
+      <form className="medicine-form" onSubmit={submit}>
+        <div className="section-title"><Pill size={20} /><h2>{t.addMedicine}</h2></div>
+        <label><span>{t.medicineName}</span><input required value={medicineForm.name} onChange={(event) => setMedicineForm((current) => ({ ...current, name: event.target.value }))} /></label>
+        <label><span>{t.dose}</span><input required value={medicineForm.dose} onChange={(event) => setMedicineForm((current) => ({ ...current, dose: event.target.value }))} /></label>
+        <label><span>{t.timesPerDay}</span><input min="1" max="12" type="number" value={medicineForm.timesPerDay} onChange={(event) => setMedicineForm((current) => ({ ...current, timesPerDay: event.target.value }))} /></label>
+        <label><span>{t.intervalHours}</span><input min="1" max="24" type="number" value={medicineForm.intervalHours} onChange={(event) => setMedicineForm((current) => ({ ...current, intervalHours: event.target.value }))} /></label>
+        <label><span>{t.firstTime}</span><input type="time" value={medicineForm.startTime} onChange={(event) => setMedicineForm((current) => ({ ...current, startTime: event.target.value }))} /></label>
+        <button className="primary-action" type="submit" disabled={isBusy}><Plus size={20} />{t.addMedicine}</button>
+      </form>
+
+      <section className="medicine-list-panel">
+        <div className="section-title"><Bell size={20} /><h2>{t.dueNow}</h2></div>
+        {dueDoses.length === 0 ? <div className="empty-state compact-empty"><p>{t.noDueMeds}</p></div> : <div className="due-list">{dueDoses.map((dose) => <article className="due-card" key={dose.id}><div><strong>{dose.name}</strong><span>{dose.dose} - {formatDateTime(dose.scheduled_at, "ar")}</span></div><button className="primary-action compact-action" type="button" onClick={() => markDoseTaken(dose.id)}><CheckCircle2 size={18} />{t.markTaken}</button></article>)}</div>}
+      </section>
+
+      <section className="medicine-list-panel">
+        <div className="section-title"><Pill size={20} /><h2>{t.activeMeds}</h2></div>
+        {medicines.length === 0 ? <div className="empty-state compact-empty"><p>{t.noMeds}</p></div> : <div className="event-list">{medicines.map((medicine) => <article className="medicine-card" key={medicine.id}><div><strong>{medicine.name}</strong><span>{medicine.dose} - {t.timesPerDay}: {medicine.times_per_day} - {t.intervalHours}: {medicine.interval_hours}</span><small>{t.firstTime}: {medicine.start_time}</small></div><button className="icon-button" type="button" aria-label={t.deleteMed} onClick={() => deleteMedicine(medicine.id)}><Trash2 size={18} /></button></article>)}</div>}
+      </section>
+    </section>
   );
 }
 
@@ -488,10 +654,21 @@ function AuthScreen({ authError, authForm, authMode, isBusy, isRtl, language, se
   );
 }
 
+function Modal({ children, onClose, title, t }) {
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={title}>
+      <section className="modal-panel">
+        <div className="section-title split-title"><h2>{title}</h2><button className="icon-button" type="button" aria-label={t.close} onClick={onClose}><X size={19} /></button></div>
+        {children}
+      </section>
+    </div>
+  );
+}
+
 function CareEvent({ entry, onRemove, t }) {
-  const config = entryTypes[entry.type];
+  const config = entryTypes[entry.type] || { icon: Pill, color: "violet" };
   const Icon = config.icon;
-  const details = Object.entries(entry.details || {}).filter(([, value]) => value).map(([key, value]) => `${t.fields[key] || humanize(key)}: ${t.options[value] || value}`).join(" - ");
+  const details = Object.entries(entry.details || {}).filter(([, value]) => value).map(([key, value]) => `${t.fields[key] || key}: ${t.options[value] || value}`).join(" - ");
   return <article className={`event ${config.color}`}><div className="event-icon"><Icon size={21} /></div><div className="event-body"><div className="event-heading"><strong>{t.type[entry.type]}</strong><time>{entry.time}</time></div>{details && <p>{details}</p>}{entry.note && <small>{entry.note}</small>}</div><button className="icon-button" type="button" aria-label={t.deleteEventError} onClick={() => onRemove(entry.id)}><Trash2 size={18} /></button></article>;
 }
 
@@ -502,8 +679,14 @@ async function apiRequest(path, options = {}) {
   return response.json();
 }
 
-function humanize(value) {
-  return value.replace(/([A-Z])/g, " $1").replace(/^./, (letter) => letter.toUpperCase());
+function formatDateTime(value, language) {
+  if (!value) return "";
+  return new Intl.DateTimeFormat(language === "ar" ? "ar-EG" : "en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
 
 createRoot(document.getElementById("root")).render(<App />);

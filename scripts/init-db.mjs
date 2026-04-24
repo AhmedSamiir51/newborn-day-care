@@ -136,4 +136,41 @@ await sql`
     and e.baby_id is null
 `;
 
+await sql`
+  create table if not exists newborn_medicines (
+    id uuid primary key,
+    user_id uuid not null references newborn_users(id) on delete cascade,
+    baby_id uuid not null references newborn_babies(id) on delete cascade,
+    name text not null,
+    dose text not null,
+    times_per_day int not null default 1,
+    interval_hours int not null default 24,
+    start_time time not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+  )
+`;
+
+await sql`
+  create index if not exists newborn_medicines_baby_idx
+  on newborn_medicines (user_id, baby_id, created_at desc)
+`;
+
+await sql`
+  create table if not exists newborn_medicine_doses (
+    id uuid primary key,
+    medicine_id uuid not null references newborn_medicines(id) on delete cascade,
+    user_id uuid not null references newborn_users(id) on delete cascade,
+    baby_id uuid not null references newborn_babies(id) on delete cascade,
+    scheduled_at timestamptz not null,
+    taken_at timestamptz,
+    created_at timestamptz not null default now()
+  )
+`;
+
+await sql`
+  create index if not exists newborn_medicine_doses_due_idx
+  on newborn_medicine_doses (user_id, baby_id, taken_at, scheduled_at)
+`;
+
 console.log("Neon database is ready.");
