@@ -8,3 +8,5 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 vite-dev*.log
+vercel-dev*.log
+smoke-entry.json

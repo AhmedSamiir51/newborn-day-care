@@ -33,6 +33,11 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
 .shell {
   width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
@@ -118,6 +123,26 @@ h2 {
   margin-top: 16px;
   padding: 18px;
   border-radius: 8px;
+}
+
+.sync-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border: 1px solid rgba(38, 127, 143, 0.2);
+  border-radius: 8px;
+  background: rgba(232, 244, 242, 0.88);
+  color: #165c67;
+  font-weight: 700;
+}
+
+.sync-banner.error {
+  border-color: rgba(214, 79, 106, 0.25);
+  background: rgba(253, 236, 239, 0.9);
+  color: #9d2f47;
 }
 
 .name-field,

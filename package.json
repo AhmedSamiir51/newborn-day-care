@@ -5,10 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
+    "db:init": "node scripts/init-db.mjs",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
+    "@neondatabase/serverless": "^1.1.0",
     "@vitejs/plugin-react": "^6.0.1",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",

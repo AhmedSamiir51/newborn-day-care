@@ -4,6 +4,7 @@ import {
   Baby,
   CalendarDays,
   Clock3,
+  Cloud,
   Droplets,
   Milk,
   Moon,
@@ -15,8 +16,6 @@ import {
   Trash2,
 } from "lucide-react";
 import "./styles.css";
-
-const STORAGE_KEY = "newborn-day-care-v1";
 
 const entryTypes = {
   feeding: {
@@ -64,30 +63,6 @@ const entryTypes = {
   },
 };
 
-const defaultEntries = [
-  {
-    id: "sample-1",
-    type: "feeding",
-    time: "06:30",
-    details: { method: "Breast", amount: "18 min", side: "Both" },
-    note: "Morning feed",
-  },
-  {
-    id: "sample-2",
-    type: "diaper",
-    time: "07:05",
-    details: { diaperType: "Wet", rash: "Normal" },
-    note: "",
-  },
-  {
-    id: "sample-3",
-    type: "medicine",
-    time: "09:00",
-    details: { medicine: "Vitamin D", dose: "As prescribed" },
-    note: "Confirm dose with pediatrician",
-  },
-];
-
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -100,25 +75,48 @@ function App() {
   const [careDate, setCareDate] = useState(todayKey());
   const [babyName, setBabyName] = useState("Baby girl");
   const [activeType, setActiveType] = useState("feeding");
-  const [entries, setEntries] = useState(defaultEntries);
+  const [entries, setEntries] = useState([]);
   const [form, setForm] = useState({ time: currentTime(), note: "" });
+  const [status, setStatus] = useState("Loading day from Neon...");
+  const [error, setError] = useState("");
+  const [isBusy, setIsBusy] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return;
+    loadDay(careDate);
+  }, [careDate]);
+
+  useEffect(() => {
+    const saveTimer = window.setTimeout(async () => {
+      try {
+        await apiRequest("/api/day", {
+          method: "PUT",
+          body: JSON.stringify({ babyName }),
+        });
+        setStatus("Saved to Neon");
+        setError("");
+      } catch {
+        setError("Baby name could not be saved. Check the database connection.");
+      }
+    }, 500);
+
+    return () => window.clearTimeout(saveTimer);
+  }, [babyName]);
+
+  async function loadDay(date) {
+    setStatus("Loading day from Neon...");
+    setError("");
+
     try {
-      const parsed = JSON.parse(saved);
-      setCareDate(parsed.careDate || todayKey());
-      setBabyName(parsed.babyName || "Baby girl");
-      setEntries(Array.isArray(parsed.entries) ? parsed.entries : defaultEntries);
+      const data = await apiRequest(`/api/day?date=${date}`);
+      setBabyName(data.babyName || "Baby girl");
+      setEntries(Array.isArray(data.entries) ? data.entries : []);
+      setStatus("Synced with Neon");
     } catch {
-      localStorage.removeItem(STORAGE_KEY);
+      setEntries([]);
+      setError("Could not load this day from Neon. Try refreshing after the database is configured.");
+      setStatus("Offline");
     }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ careDate, babyName, entries }));
-  }, [careDate, babyName, entries]);
+  }
 
   const summary = useMemo(() => {
     return Object.keys(entryTypes).reduce((acc, type) => {
@@ -138,34 +136,66 @@ function App() {
     setForm((current) => ({ ...current, [name]: value }));
   }
 
-  function addEntry(event) {
+  async function addEntry(event) {
     event.preventDefault();
+    setIsBusy(true);
+    setError("");
+
     const details = {};
     activeConfig.fields.forEach((field) => {
       details[field.name] = form[field.name] || field.options?.[0] || "";
     });
 
-    setEntries((current) => [
-      ...current,
-      {
-        id: crypto.randomUUID(),
-        type: activeType,
-        time: form.time || currentTime(),
-        details,
-        note: form.note || "",
-      },
-    ]);
+    const entry = {
+      id: crypto.randomUUID(),
+      type: activeType,
+      time: form.time || currentTime(),
+      details,
+      note: form.note || "",
+    };
 
-    setForm({ time: currentTime(), note: "" });
+    try {
+      const data = await apiRequest("/api/day", {
+        method: "POST",
+        body: JSON.stringify({ careDate, entry }),
+      });
+      setEntries((current) => [...current, data.entry]);
+      setForm({ time: currentTime(), note: "" });
+      setStatus("Saved to Neon");
+    } catch {
+      setError("This event could not be saved to Neon.");
+    } finally {
+      setIsBusy(false);
+    }
   }
 
-  function removeEntry(id) {
+  async function removeEntry(id) {
+    const previousEntries = entries;
     setEntries((current) => current.filter((entry) => entry.id !== id));
+    setError("");
+
+    try {
+      await apiRequest(`/api/day?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      setStatus("Saved to Neon");
+    } catch {
+      setEntries(previousEntries);
+      setError("This event could not be deleted from Neon.");
+    }
   }
 
-  function resetDay() {
+  async function resetDay() {
+    const previousEntries = entries;
     setEntries([]);
-    setForm({ time: currentTime(), note: "" });
+    setError("");
+
+    try {
+      await apiRequest(`/api/day?date=${careDate}`, { method: "DELETE" });
+      setForm({ time: currentTime(), note: "" });
+      setStatus("Saved to Neon");
+    } catch {
+      setEntries(previousEntries);
+      setError("This day could not be reset in Neon.");
+    }
   }
 
   return (
@@ -188,6 +218,11 @@ function App() {
           />
         </div>
       </section>
+
+      <div className={`sync-banner ${error ? "error" : ""}`}>
+        <Cloud size={18} />
+        <span>{error || status}</span>
+      </div>
 
       <section className="baby-panel" aria-label="Baby profile and summary">
         <label className="name-field">
@@ -268,9 +303,9 @@ function App() {
             />
           </label>
 
-          <button className="primary-action" type="submit">
+          <button className="primary-action" type="submit" disabled={isBusy}>
             <Plus size={20} />
-            Add to day
+            {isBusy ? "Saving..." : "Add to day"}
           </button>
         </form>
 
@@ -308,7 +343,7 @@ function CareEvent({ entry, onRemove }) {
   const details = Object.entries(entry.details || {})
     .filter(([, value]) => value)
     .map(([key, value]) => `${humanize(key)}: ${value}`)
-    .join(" · ");
+    .join(" - ");
 
   return (
     <article className={`event ${config.color}`}>
@@ -328,6 +363,23 @@ function CareEvent({ entry, onRemove }) {
       </button>
     </article>
   );
+}
+
+async function apiRequest(path, options = {}) {
+  const response = await fetch(path, {
+    headers: { "Content-Type": "application/json", ...options.headers },
+    ...options,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Request failed with ${response.status}`);
+  }
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  return response.json();
 }
 
 function humanize(value) {
