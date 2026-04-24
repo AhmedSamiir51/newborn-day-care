@@ -26,7 +26,7 @@ import "./styles.css";
 const entryTypes = {
   feeding: { icon: Milk, color: "rose", fields: [{ name: "method", type: "select", options: ["breast", "bottle", "formula", "pumped"] }, { name: "amount", placeholder: { ar: "60 مل أو 20 دقيقة", en: "60 ml or 20 min" } }, { name: "side", type: "select", options: ["both", "left", "right", "na"] }] },
   diaper: { icon: Droplets, color: "teal", fields: [{ name: "diaperType", type: "select", options: ["wet", "dirty", "wetDirty", "dry"] }, { name: "rash", type: "select", options: ["normal", "redness", "cream"] }] },
-  sleep: { icon: Moon, color: "indigo", fields: [{ name: "duration", placeholder: { ar: "45 دقيقة", en: "45 min" } }, { name: "place", type: "select", options: ["bassinet", "crib", "held", "stroller"] }] },
+  sleep: { icon: Moon, color: "indigo", fields: [{ name: "duration", placeholder: { ar: "45 دقيقة", en: "45 min" } }] },
   note: { icon: NotebookPen, color: "amber", fields: [{ name: "note", placeholder: { ar: "المزاج، الحرارة، الحمام، الموعد...", en: "Mood, temperature, bath, appointment..." } }] },
 };
 
@@ -188,7 +188,7 @@ const copy = {
 };
 
 const blankBaby = { name: "", age: "", gender: "girl" };
-const blankMedicine = { name: "", dose: "", timesPerDay: 1, durationDays: 1, startDate: todayKey(), startTime: "08:00" };
+const blankMedicine = { name: "", dose: "", timesPerDay: 1, durationDays: 1, startTime: "08:00" };
 
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
@@ -487,7 +487,6 @@ function App() {
       dose: medicine.dose || "",
       timesPerDay: medicine.times_per_day || 1,
       durationDays: medicine.duration_days || 1,
-      startDate: medicine.start_date || todayKey(),
       startTime: medicine.start_time || "08:00",
     });
   }
@@ -642,7 +641,6 @@ function MedicineView({ deleteMedicine, editMedicine, editingMedicineId, dueDose
         <label><span>{t.medicineName}</span><input required value={medicineForm.name} onChange={(event) => setMedicineForm((current) => ({ ...current, name: event.target.value }))} /></label>
         <label><span>{t.dose}</span><input required value={medicineForm.dose} onChange={(event) => setMedicineForm((current) => ({ ...current, dose: event.target.value }))} /></label>
         <label><span>{t.timesPerDay}</span><input min="1" max="12" type="number" value={medicineForm.timesPerDay} onChange={(event) => setMedicineForm((current) => ({ ...current, timesPerDay: event.target.value }))} /></label>
-        <label><span>{t.startDate}</span><input type="date" value={medicineForm.startDate} onChange={(event) => setMedicineForm((current) => ({ ...current, startDate: event.target.value }))} /></label>
         <label><span>{t.durationDays}</span><input min="1" max="365" type="number" value={medicineForm.durationDays} onChange={(event) => setMedicineForm((current) => ({ ...current, durationDays: event.target.value }))} /></label>
         <label><span>{t.firstTime}</span><input type="time" value={medicineForm.startTime} onChange={(event) => setMedicineForm((current) => ({ ...current, startTime: event.target.value }))} /></label>
         <button className="primary-action" type="submit" disabled={isBusy}><Plus size={20} />{editingMedicineId ? t.updateMedicine : t.addMedicine}</button>
@@ -656,7 +654,7 @@ function MedicineView({ deleteMedicine, editMedicine, editingMedicineId, dueDose
 
       <section className="medicine-list-panel">
         <div className="section-title"><Pill size={20} /><h2>{t.activeMeds}</h2></div>
-        {medicines.length === 0 ? <div className="empty-state compact-empty"><p>{t.noMeds}</p></div> : <div className="event-list">{medicines.map((medicine) => <article className="medicine-card" key={medicine.id}><div><strong>{medicine.name}</strong><span>{medicine.dose} - {t.timesPerDay}: {medicine.times_per_day} - {t.durationDays}: {medicine.duration_days}</span><small>{t.startDate}: {medicine.start_date} - {t.firstTime}: {medicine.start_time}</small></div><div className="baby-actions"><button className="icon-button" type="button" aria-label={t.editMedicine} onClick={() => editMedicine(medicine)}><Pencil size={18} /></button><button className="icon-button" type="button" aria-label={t.deleteMed} onClick={() => deleteMedicine(medicine.id)}><Trash2 size={18} /></button></div></article>)}</div>}
+        {medicines.length === 0 ? <div className="empty-state compact-empty"><p>{t.noMeds}</p></div> : <div className="event-list">{medicines.map((medicine) => <article className="medicine-card" key={medicine.id}><div><strong>{medicine.name}</strong><span>{medicine.dose} - {t.timesPerDay}: {medicine.times_per_day} - {t.durationDays}: {medicine.duration_days}</span><small>{t.firstTime}: {medicine.start_time}</small></div><div className="baby-actions"><button className="icon-button" type="button" aria-label={t.editMedicine} onClick={() => editMedicine(medicine)}><Pencil size={18} /></button><button className="icon-button" type="button" aria-label={t.deleteMed} onClick={() => deleteMedicine(medicine.id)}><Trash2 size={18} /></button></div></article>)}</div>}
       </section>
     </section>
   );
