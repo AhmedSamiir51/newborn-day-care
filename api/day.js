@@ -1,4 +1,5 @@
 import { neon } from "@neondatabase/serverless";
+import { getSessionUser } from "./_auth.js";
 
 const sql = neon(process.env.DATABASE_URL);
 
@@ -33,6 +34,11 @@ export default async function handler(request, response) {
 }
 
 async function getDay(request, response) {
+  const user = await getSessionUser(request);
+  if (!user) {
+    return response.status(401).json({ error: "Login required." });
+  }
+
   const careDate = readCareDate(request);
   if (!careDate) {
     return response.status(400).json({ error: "A valid care date is required." });
@@ -40,8 +46,8 @@ async function getDay(request, response) {
 
   const profileRows = await sql`
     select baby_name
-    from newborn_day_profile
-    where id = 'default'
+    from newborn_user_profiles
+    where user_id = ${user.id}
   `;
 
   const entries = await sql`
@@ -51,8 +57,9 @@ async function getDay(request, response) {
       to_char(event_time, 'HH24:MI') as time,
       details,
       note
-    from newborn_day_events
-    where care_date = ${careDate}
+    from newborn_user_events
+    where user_id = ${user.id}
+      and care_date = ${careDate}
     order by event_time desc, created_at desc
   `;
 
@@ -63,6 +70,11 @@ async function getDay(request, response) {
 }
 
 async function createEntry(request, response) {
+  const user = await getSessionUser(request);
+  if (!user) {
+    return response.status(401).json({ error: "Login required." });
+  }
+
   const body = request.body || {};
   const careDate = normalizeDate(body.careDate);
   const entry = normalizeEntry(body.entry);
@@ -73,23 +85,28 @@ async function createEntry(request, response) {
 
   const rows = await sql.query(
     `
-      insert into newborn_day_events (id, care_date, type, event_time, details, note)
-      values ($1, $2, $3, $4, $5::jsonb, $6)
+      insert into newborn_user_events (id, user_id, care_date, type, event_time, details, note)
+      values ($1, $2, $3, $4, $5, $6::jsonb, $7)
       returning id, type, to_char(event_time, 'HH24:MI') as time, details, note
     `,
-    [entry.id, careDate, entry.type, entry.time, JSON.stringify(entry.details), entry.note]
+    [entry.id, user.id, careDate, entry.type, entry.time, JSON.stringify(entry.details), entry.note]
   );
 
   return response.status(201).json({ entry: rows[0] });
 }
 
 async function updateProfile(request, response) {
+  const user = await getSessionUser(request);
+  if (!user) {
+    return response.status(401).json({ error: "Login required." });
+  }
+
   const babyName = String(request.body?.babyName || "").trim().slice(0, 80) || "Baby girl";
 
   const rows = await sql`
-    insert into newborn_day_profile (id, baby_name, updated_at)
-    values ('default', ${babyName}, now())
-    on conflict (id)
+    insert into newborn_user_profiles (user_id, baby_name, updated_at)
+    values (${user.id}, ${babyName}, now())
+    on conflict (user_id)
     do update set baby_name = excluded.baby_name, updated_at = now()
     returning baby_name
   `;
@@ -98,17 +115,22 @@ async function updateProfile(request, response) {
 }
 
 async function deleteEntryOrDay(request, response) {
+  const user = await getSessionUser(request);
+  if (!user) {
+    return response.status(401).json({ error: "Login required." });
+  }
+
   const url = new URL(request.url, `https://${request.headers.host || "localhost"}`);
   const id = url.searchParams.get("id");
   const careDate = normalizeDate(url.searchParams.get("date"));
 
   if (id) {
-    await sql`delete from newborn_day_events where id = ${id}`;
+    await sql`delete from newborn_user_events where user_id = ${user.id} and id = ${id}`;
     return response.status(204).end();
   }
 
   if (careDate) {
-    await sql`delete from newborn_day_events where care_date = ${careDate}`;
+    await sql`delete from newborn_user_events where user_id = ${user.id} and care_date = ${careDate}`;
     return response.status(204).end();
   }
 

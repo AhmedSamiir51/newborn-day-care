@@ -6,6 +6,8 @@ import {
   Clock3,
   Cloud,
   Droplets,
+  Languages,
+  LogOut,
   Milk,
   Moon,
   NotebookPen,
@@ -14,52 +16,211 @@ import {
   RotateCcw,
   Sparkles,
   Trash2,
+  UserRound,
 } from "lucide-react";
 import "./styles.css";
 
 const entryTypes = {
   feeding: {
-    label: "Feeding",
     icon: Milk,
     color: "rose",
     fields: [
-      { name: "method", label: "Method", type: "select", options: ["Breast", "Bottle", "Formula", "Pumped milk"] },
-      { name: "amount", label: "Amount", placeholder: "60 ml or 20 min" },
-      { name: "side", label: "Side", type: "select", options: ["Both", "Left", "Right", "N/A"] },
+      { name: "method", type: "select", options: ["breast", "bottle", "formula", "pumped"] },
+      { name: "amount", placeholder: { ar: "60 مل أو 20 دقيقة", en: "60 ml or 20 min" } },
+      { name: "side", type: "select", options: ["both", "left", "right", "na"] },
     ],
   },
   diaper: {
-    label: "Diaper",
     icon: Droplets,
     color: "teal",
     fields: [
-      { name: "diaperType", label: "Type", type: "select", options: ["Wet", "Dirty", "Wet + dirty", "Dry check"] },
-      { name: "rash", label: "Skin", type: "select", options: ["Normal", "Redness", "Rash cream used"] },
+      { name: "diaperType", type: "select", options: ["wet", "dirty", "wetDirty", "dry"] },
+      { name: "rash", type: "select", options: ["normal", "redness", "cream"] },
     ],
   },
   medicine: {
-    label: "Medicine",
     icon: Pill,
     color: "violet",
     fields: [
-      { name: "medicine", label: "Medicine", placeholder: "Vitamin D" },
-      { name: "dose", label: "Dose", placeholder: "1 drop or 0.5 ml" },
+      { name: "medicine", placeholder: { ar: "فيتامين د", en: "Vitamin D" } },
+      { name: "dose", placeholder: { ar: "نقطة واحدة أو 0.5 مل", en: "1 drop or 0.5 ml" } },
     ],
   },
   sleep: {
-    label: "Sleep",
     icon: Moon,
     color: "indigo",
     fields: [
-      { name: "duration", label: "Duration", placeholder: "45 min" },
-      { name: "place", label: "Place", type: "select", options: ["Bassinet", "Crib", "Held", "Stroller"] },
+      { name: "duration", placeholder: { ar: "45 دقيقة", en: "45 min" } },
+      { name: "place", type: "select", options: ["bassinet", "crib", "held", "stroller"] },
     ],
   },
   note: {
-    label: "Note",
     icon: NotebookPen,
     color: "amber",
-    fields: [{ name: "note", label: "Note", placeholder: "Mood, temperature, bath, appointment..." }],
+    fields: [{ name: "note", placeholder: { ar: "المزاج، الحرارة، الحمام، الموعد...", en: "Mood, temperature, bath, appointment..." } }],
+  },
+};
+
+const copy = {
+  ar: {
+    appName: "متابعة يوم المولودة",
+    headline: (name) => `يوم ${name}`,
+    babyGirl: "البيبي",
+    careDate: "تاريخ اليوم",
+    babyName: "اسم البيبي",
+    addEvent: "إضافة حدث",
+    time: "الوقت",
+    extraNote: "ملاحظة إضافية",
+    notePlaceholder: "أي شيء مهم للشخص الذي سيرعى البيبي بعدك",
+    addToDay: "إضافة لليوم",
+    saving: "جار الحفظ...",
+    timeline: "سجل اليوم",
+    reset: "مسح اليوم",
+    empty: "لا توجد أحداث لهذا اليوم.",
+    loading: "جار تحميل اليوم من Neon...",
+    synced: "تمت المزامنة مع Neon",
+    saved: "تم الحفظ في Neon",
+    offline: "غير متصل",
+    loadError: "لم نتمكن من تحميل هذا اليوم. تأكدي من اتصال قاعدة البيانات.",
+    saveNameError: "لم يتم حفظ اسم البيبي.",
+    saveEventError: "لم يتم حفظ هذا الحدث.",
+    deleteEventError: "لم يتم حذف هذا الحدث.",
+    resetError: "لم يتم مسح اليوم.",
+    loginRequired: "سجلي الدخول لعرض بياناتك الخاصة.",
+    signIn: "تسجيل الدخول",
+    register: "إنشاء حساب",
+    name: "الاسم",
+    email: "البريد الإلكتروني",
+    password: "كلمة المرور",
+    authTitle: "ادخلي لحسابك",
+    authSubtitle: "كل أم أو مقدمة رعاية ترى بيانات البيبي الخاصة بحسابها فقط.",
+    createAccount: "إنشاء الحساب",
+    enterAccount: "دخول",
+    logout: "خروج",
+    language: "English",
+    authError: "لم تنجح العملية. تأكدي من البريد وكلمة المرور.",
+    passwordHint: "كلمة المرور 6 أحرف على الأقل.",
+    userLabel: "الحساب",
+    type: {
+      feeding: "رضاعة",
+      diaper: "حفاض",
+      medicine: "دواء",
+      sleep: "نوم",
+      note: "ملاحظة",
+    },
+    fields: {
+      method: "الطريقة",
+      amount: "الكمية",
+      side: "الجهة",
+      diaperType: "النوع",
+      rash: "الجلد",
+      medicine: "الدواء",
+      dose: "الجرعة",
+      duration: "المدة",
+      place: "المكان",
+      note: "ملاحظة",
+    },
+    options: {
+      breast: "رضاعة طبيعية",
+      bottle: "ببرونة",
+      formula: "حليب صناعي",
+      pumped: "حليب مشفوط",
+      both: "الجهتان",
+      left: "يسار",
+      right: "يمين",
+      na: "لا ينطبق",
+      wet: "بول",
+      dirty: "براز",
+      wetDirty: "بول وبراز",
+      dry: "فحص جاف",
+      normal: "طبيعي",
+      redness: "احمرار",
+      cream: "تم استخدام كريم",
+      bassinet: "سرير صغير",
+      crib: "سرير",
+      held: "على اليد",
+      stroller: "عربة",
+    },
+  },
+  en: {
+    appName: "Newborn daily care",
+    headline: (name) => `${name}'s day`,
+    babyGirl: "Baby girl",
+    careDate: "Care date",
+    babyName: "Baby name",
+    addEvent: "Add care event",
+    time: "Time",
+    extraNote: "Extra note",
+    notePlaceholder: "Anything important for the next caregiver",
+    addToDay: "Add to day",
+    saving: "Saving...",
+    timeline: "Today timeline",
+    reset: "Reset",
+    empty: "No events yet for this day.",
+    loading: "Loading day from Neon...",
+    synced: "Synced with Neon",
+    saved: "Saved to Neon",
+    offline: "Offline",
+    loadError: "Could not load this day. Check the database connection.",
+    saveNameError: "Baby name could not be saved.",
+    saveEventError: "This event could not be saved.",
+    deleteEventError: "This event could not be deleted.",
+    resetError: "This day could not be reset.",
+    loginRequired: "Sign in to see your private data.",
+    signIn: "Sign in",
+    register: "Register",
+    name: "Name",
+    email: "Email",
+    password: "Password",
+    authTitle: "Enter your account",
+    authSubtitle: "Each parent or caregiver sees only the baby data saved under their own account.",
+    createAccount: "Create account",
+    enterAccount: "Sign in",
+    logout: "Logout",
+    language: "العربية",
+    authError: "Authentication failed. Check your email and password.",
+    passwordHint: "Password must be at least 6 characters.",
+    userLabel: "Account",
+    type: {
+      feeding: "Feeding",
+      diaper: "Diaper",
+      medicine: "Medicine",
+      sleep: "Sleep",
+      note: "Note",
+    },
+    fields: {
+      method: "Method",
+      amount: "Amount",
+      side: "Side",
+      diaperType: "Type",
+      rash: "Skin",
+      medicine: "Medicine",
+      dose: "Dose",
+      duration: "Duration",
+      place: "Place",
+      note: "Note",
+    },
+    options: {
+      breast: "Breast",
+      bottle: "Bottle",
+      formula: "Formula",
+      pumped: "Pumped milk",
+      both: "Both",
+      left: "Left",
+      right: "Right",
+      na: "N/A",
+      wet: "Wet",
+      dirty: "Dirty",
+      wetDirty: "Wet + dirty",
+      dry: "Dry check",
+      normal: "Normal",
+      redness: "Redness",
+      cream: "Rash cream used",
+      bassinet: "Bassinet",
+      crib: "Crib",
+      held: "Held",
+      stroller: "Stroller",
+    },
   },
 };
 
@@ -72,49 +233,114 @@ function currentTime() {
 }
 
 function App() {
+  const [language, setLanguage] = useState(() => localStorage.getItem("newborn-language") || "ar");
+  const [user, setUser] = useState(null);
+  const [authMode, setAuthMode] = useState("login");
+  const [authForm, setAuthForm] = useState({ name: "", email: "", password: "" });
+  const [authError, setAuthError] = useState("");
+  const [authLoading, setAuthLoading] = useState(true);
   const [careDate, setCareDate] = useState(todayKey());
-  const [babyName, setBabyName] = useState("Baby girl");
+  const [babyName, setBabyName] = useState(copy[language].babyGirl);
   const [activeType, setActiveType] = useState("feeding");
   const [entries, setEntries] = useState([]);
   const [form, setForm] = useState({ time: currentTime(), note: "" });
-  const [status, setStatus] = useState("Loading day from Neon...");
+  const [status, setStatus] = useState(copy[language].loading);
   const [error, setError] = useState("");
   const [isBusy, setIsBusy] = useState(false);
 
-  useEffect(() => {
-    loadDay(careDate);
-  }, [careDate]);
+  const t = copy[language];
+  const isRtl = language === "ar";
 
   useEffect(() => {
+    localStorage.setItem("newborn-language", language);
+    document.documentElement.lang = language;
+    document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
+  }, [language]);
+
+  useEffect(() => {
+    checkSession();
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      loadDay(careDate);
+    }
+  }, [careDate, user?.id]);
+
+  useEffect(() => {
+    if (!user || authLoading) return;
+
     const saveTimer = window.setTimeout(async () => {
       try {
         await apiRequest("/api/day", {
           method: "PUT",
           body: JSON.stringify({ babyName }),
         });
-        setStatus("Saved to Neon");
+        setStatus(t.saved);
         setError("");
       } catch {
-        setError("Baby name could not be saved. Check the database connection.");
+        setError(t.saveNameError);
       }
     }, 500);
 
     return () => window.clearTimeout(saveTimer);
-  }, [babyName]);
+  }, [babyName, user?.id, language]);
+
+  async function checkSession() {
+    setAuthLoading(true);
+    try {
+      const data = await apiRequest("/api/auth");
+      setUser(data.user || null);
+    } catch {
+      setUser(null);
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function submitAuth(event) {
+    event.preventDefault();
+    setAuthError("");
+    setIsBusy(true);
+
+    try {
+      const data = await apiRequest("/api/auth", {
+        method: "POST",
+        body: JSON.stringify({ action: authMode === "register" ? "register" : "login", ...authForm }),
+      });
+      setUser(data.user);
+      setAuthForm({ name: "", email: "", password: "" });
+      setStatus(t.loading);
+    } catch {
+      setAuthError(t.authError);
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function logout() {
+    await apiRequest("/api/auth", {
+      method: "POST",
+      body: JSON.stringify({ action: "logout" }),
+    }).catch(() => null);
+    setUser(null);
+    setEntries([]);
+    setBabyName(t.babyGirl);
+  }
 
   async function loadDay(date) {
-    setStatus("Loading day from Neon...");
+    setStatus(t.loading);
     setError("");
 
     try {
       const data = await apiRequest(`/api/day?date=${date}`);
-      setBabyName(data.babyName || "Baby girl");
+      setBabyName(data.babyName || t.babyGirl);
       setEntries(Array.isArray(data.entries) ? data.entries : []);
-      setStatus("Synced with Neon");
+      setStatus(t.synced);
     } catch {
       setEntries([]);
-      setError("Could not load this day from Neon. Try refreshing after the database is configured.");
-      setStatus("Offline");
+      setError(t.loadError);
+      setStatus(t.offline);
     }
   }
 
@@ -161,9 +387,9 @@ function App() {
       });
       setEntries((current) => [...current, data.entry]);
       setForm({ time: currentTime(), note: "" });
-      setStatus("Saved to Neon");
+      setStatus(t.saved);
     } catch {
-      setError("This event could not be saved to Neon.");
+      setError(t.saveEventError);
     } finally {
       setIsBusy(false);
     }
@@ -176,10 +402,10 @@ function App() {
 
     try {
       await apiRequest(`/api/day?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-      setStatus("Saved to Neon");
+      setStatus(t.saved);
     } catch {
       setEntries(previousEntries);
-      setError("This event could not be deleted from Neon.");
+      setError(t.deleteEventError);
     }
   }
 
@@ -191,27 +417,66 @@ function App() {
     try {
       await apiRequest(`/api/day?date=${careDate}`, { method: "DELETE" });
       setForm({ time: currentTime(), note: "" });
-      setStatus("Saved to Neon");
+      setStatus(t.saved);
     } catch {
       setEntries(previousEntries);
-      setError("This day could not be reset in Neon.");
+      setError(t.resetError);
     }
   }
 
+  if (authLoading) {
+    return (
+      <main className="shell auth-shell" dir={isRtl ? "rtl" : "ltr"}>
+        <div className="auth-card">
+          <Baby size={38} />
+          <p>{t.loading}</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!user) {
+    return (
+      <AuthScreen
+        authError={authError}
+        authForm={authForm}
+        authMode={authMode}
+        isBusy={isBusy}
+        isRtl={isRtl}
+        language={language}
+        setAuthForm={setAuthForm}
+        setAuthMode={setAuthMode}
+        setLanguage={setLanguage}
+        submitAuth={submitAuth}
+        t={t}
+      />
+    );
+  }
+
   return (
-    <main className="shell">
-      <section className="topbar" aria-label="Daily care header">
+    <main className="shell" dir={isRtl ? "rtl" : "ltr"}>
+      <section className="topbar" aria-label={t.appName}>
         <div className="brand-mark" aria-hidden="true">
           <Baby size={28} />
         </div>
         <div>
-          <p className="eyebrow">Newborn daily care</p>
-          <h1>{babyName}'s day</h1>
+          <p className="eyebrow">{t.appName}</p>
+          <h1>{t.headline(babyName)}</h1>
+        </div>
+        <div className="header-actions">
+          <button className="ghost-action" type="button" onClick={() => setLanguage(language === "ar" ? "en" : "ar")}>
+            <Languages size={17} />
+            {t.language}
+          </button>
+          <button className="ghost-action" type="button" onClick={logout}>
+            <LogOut size={17} />
+            {t.logout}
+          </button>
         </div>
         <div className="date-pill">
           <CalendarDays size={18} />
           <input
-            aria-label="Care date"
+            aria-label={t.careDate}
             type="date"
             value={careDate}
             onChange={(event) => setCareDate(event.target.value)}
@@ -224,9 +489,9 @@ function App() {
         <span>{error || status}</span>
       </div>
 
-      <section className="baby-panel" aria-label="Baby profile and summary">
+      <section className="baby-panel" aria-label={t.babyName}>
         <label className="name-field">
-          <span>Baby name</span>
+          <span>{t.babyName}</span>
           <input value={babyName} onChange={(event) => setBabyName(event.target.value)} />
         </label>
         <div className="summary-strip">
@@ -236,7 +501,7 @@ function App() {
               <div className={`summary-item ${config.color}`} key={type}>
                 <Icon size={20} />
                 <strong>{summary[type] || 0}</strong>
-                <span>{config.label}</span>
+                <span>{t.type[type]}</span>
               </div>
             );
           })}
@@ -247,10 +512,10 @@ function App() {
         <form className="logger" onSubmit={addEntry}>
           <div className="section-title">
             <Sparkles size={20} />
-            <h2>Add care event</h2>
+            <h2>{t.addEvent}</h2>
           </div>
 
-          <div className="type-grid" role="tablist" aria-label="Care event type">
+          <div className="type-grid" role="tablist" aria-label={t.addEvent}>
             {Object.entries(entryTypes).map(([type, config]) => {
               const Icon = config.icon;
               return (
@@ -264,30 +529,32 @@ function App() {
                   }}
                 >
                   <Icon size={20} />
-                  <span>{config.label}</span>
+                  <span>{t.type[type]}</span>
                 </button>
               );
             })}
           </div>
 
           <label>
-            <span>Time</span>
+            <span>{t.time}</span>
             <input type="time" value={form.time || ""} onChange={(event) => updateForm("time", event.target.value)} />
           </label>
 
           {activeConfig.fields.map((field) => (
             <label key={field.name}>
-              <span>{field.label}</span>
+              <span>{t.fields[field.name]}</span>
               {field.type === "select" ? (
                 <select value={form[field.name] || field.options[0]} onChange={(event) => updateForm(field.name, event.target.value)}>
                   {field.options.map((option) => (
-                    <option key={option}>{option}</option>
+                    <option key={option} value={option}>
+                      {t.options[option]}
+                    </option>
                   ))}
                 </select>
               ) : (
                 <input
                   value={form[field.name] || ""}
-                  placeholder={field.placeholder}
+                  placeholder={field.placeholder?.[language]}
                   onChange={(event) => updateForm(field.name, event.target.value)}
                 />
               )}
@@ -295,39 +562,39 @@ function App() {
           ))}
 
           <label>
-            <span>Extra note</span>
+            <span>{t.extraNote}</span>
             <textarea
               value={form.note || ""}
-              placeholder="Anything important for the next caregiver"
+              placeholder={t.notePlaceholder}
               onChange={(event) => updateForm("note", event.target.value)}
             />
           </label>
 
           <button className="primary-action" type="submit" disabled={isBusy}>
             <Plus size={20} />
-            {isBusy ? "Saving..." : "Add to day"}
+            {isBusy ? t.saving : t.addToDay}
           </button>
         </form>
 
-        <section className="timeline" aria-label="Daily timeline">
+        <section className="timeline" aria-label={t.timeline}>
           <div className="section-title timeline-title">
             <Clock3 size={20} />
-            <h2>Today timeline</h2>
+            <h2>{t.timeline}</h2>
             <button className="ghost-action" type="button" onClick={resetDay}>
               <RotateCcw size={17} />
-              Reset
+              {t.reset}
             </button>
           </div>
 
           {sortedEntries.length === 0 ? (
             <div className="empty-state">
               <Baby size={34} />
-              <p>No events yet for this day.</p>
+              <p>{t.empty}</p>
             </div>
           ) : (
             <div className="event-list">
               {sortedEntries.map((entry) => (
-                <CareEvent entry={entry} key={entry.id} onRemove={removeEntry} />
+                <CareEvent entry={entry} key={entry.id} onRemove={removeEntry} t={t} />
               ))}
             </div>
           )}
@@ -337,12 +604,81 @@ function App() {
   );
 }
 
-function CareEvent({ entry, onRemove }) {
+function AuthScreen({ authError, authForm, authMode, isBusy, isRtl, language, setAuthForm, setAuthMode, setLanguage, submitAuth, t }) {
+  return (
+    <main className="shell auth-shell" dir={isRtl ? "rtl" : "ltr"}>
+      <section className="auth-card">
+        <div className="auth-top">
+          <div className="brand-mark" aria-hidden="true">
+            <Baby size={28} />
+          </div>
+          <button className="ghost-action" type="button" onClick={() => setLanguage(language === "ar" ? "en" : "ar")}>
+            <Languages size={17} />
+            {t.language}
+          </button>
+        </div>
+
+        <p className="eyebrow">{t.appName}</p>
+        <h1>{t.authTitle}</h1>
+        <p className="auth-copy">{t.authSubtitle}</p>
+
+        <div className="auth-tabs">
+          <button className={authMode === "login" ? "active" : ""} type="button" onClick={() => setAuthMode("login")}>
+            {t.signIn}
+          </button>
+          <button className={authMode === "register" ? "active" : ""} type="button" onClick={() => setAuthMode("register")}>
+            {t.register}
+          </button>
+        </div>
+
+        <form className="auth-form" onSubmit={submitAuth}>
+          {authMode === "register" && (
+            <label>
+              <span>{t.name}</span>
+              <input value={authForm.name} onChange={(event) => setAuthForm((current) => ({ ...current, name: event.target.value }))} />
+            </label>
+          )}
+
+          <label>
+            <span>{t.email}</span>
+            <input
+              autoComplete="email"
+              type="email"
+              value={authForm.email}
+              onChange={(event) => setAuthForm((current) => ({ ...current, email: event.target.value }))}
+            />
+          </label>
+
+          <label>
+            <span>{t.password}</span>
+            <input
+              autoComplete={authMode === "register" ? "new-password" : "current-password"}
+              minLength={6}
+              type="password"
+              value={authForm.password}
+              onChange={(event) => setAuthForm((current) => ({ ...current, password: event.target.value }))}
+            />
+          </label>
+
+          <small>{t.passwordHint}</small>
+          {authError && <div className="auth-error">{authError}</div>}
+
+          <button className="primary-action" type="submit" disabled={isBusy}>
+            <UserRound size={20} />
+            {authMode === "register" ? t.createAccount : t.enterAccount}
+          </button>
+        </form>
+      </section>
+    </main>
+  );
+}
+
+function CareEvent({ entry, onRemove, t }) {
   const config = entryTypes[entry.type];
   const Icon = config.icon;
   const details = Object.entries(entry.details || {})
     .filter(([, value]) => value)
-    .map(([key, value]) => `${humanize(key)}: ${value}`)
+    .map(([key, value]) => `${t.fields[key] || humanize(key)}: ${t.options[value] || value}`)
     .join(" - ");
 
   return (
@@ -352,13 +688,13 @@ function CareEvent({ entry, onRemove }) {
       </div>
       <div className="event-body">
         <div className="event-heading">
-          <strong>{config.label}</strong>
+          <strong>{t.type[entry.type]}</strong>
           <time>{entry.time}</time>
         </div>
         {details && <p>{details}</p>}
         {entry.note && <small>{entry.note}</small>}
       </div>
-      <button className="icon-button" type="button" aria-label={`Delete ${config.label} entry`} onClick={() => onRemove(entry.id)}>
+      <button className="icon-button" type="button" aria-label={t.deleteEventError} onClick={() => onRemove(entry.id)}>
         <Trash2 size={18} />
       </button>
     </article>
@@ -367,6 +703,7 @@ function CareEvent({ entry, onRemove }) {
 
 async function apiRequest(path, options = {}) {
   const response = await fetch(path, {
+    credentials: "same-origin",
     headers: { "Content-Type": "application/json", ...options.headers },
     ...options,
   });
