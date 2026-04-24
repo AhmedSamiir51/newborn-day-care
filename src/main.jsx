@@ -85,10 +85,14 @@ const copy = {
     passwordHint: "كلمة المرور 6 أحرف على الأقل.",
     medTitle: "جدول الأدوية",
     addMedicine: "إضافة دواء",
+    editMedicine: "تعديل الدواء",
+    updateMedicine: "تحديث الدواء",
     medicineName: "اسم الدواء",
     dose: "الجرعة",
     timesPerDay: "مرات في اليوم",
     intervalHours: "كل كام ساعة",
+    durationDays: "لمدة كام يوم",
+    startDate: "بداية العلاج",
     firstTime: "أول ميعاد",
     dueNow: "أدوية مستحقة الآن",
     noDueMeds: "لا توجد أدوية مستحقة الآن.",
@@ -158,10 +162,14 @@ const copy = {
     passwordHint: "Password must be at least 6 characters.",
     medTitle: "Medicine schedule",
     addMedicine: "Add medicine",
+    editMedicine: "Edit medicine",
+    updateMedicine: "Update medicine",
     medicineName: "Medicine name",
     dose: "Dose",
     timesPerDay: "Times per day",
     intervalHours: "Every how many hours",
+    durationDays: "Treatment days",
+    startDate: "Start date",
     firstTime: "First time",
     dueNow: "Medicine due now",
     noDueMeds: "No medicine is due now.",
@@ -180,7 +188,7 @@ const copy = {
 };
 
 const blankBaby = { name: "", age: "", gender: "girl" };
-const blankMedicine = { name: "", dose: "", timesPerDay: 1, intervalHours: 24, startTime: "08:00" };
+const blankMedicine = { name: "", dose: "", timesPerDay: 1, durationDays: 1, startDate: todayKey(), startTime: "08:00" };
 
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
@@ -210,6 +218,7 @@ function App() {
   const [medicines, setMedicines] = useState([]);
   const [dueDoses, setDueDoses] = useState([]);
   const [medicineForm, setMedicineForm] = useState(blankMedicine);
+  const [editingMedicineId, setEditingMedicineId] = useState("");
   const [status, setStatus] = useState(copy[language].loading);
   const [error, setError] = useState("");
   const [isBusy, setIsBusy] = useState(false);
@@ -419,18 +428,25 @@ function App() {
     }
   }
 
-  async function addMedicine(event) {
+  async function saveMedicine(event) {
     event.preventDefault();
     if (!selectedBabyId) return;
     setIsBusy(true);
     setError("");
 
     try {
+      const method = editingMedicineId ? "PUT" : "POST";
       await apiRequest("/api/medicines", {
-        method: "POST",
-        body: JSON.stringify({ ...medicineForm, babyId: selectedBabyId }),
+        method,
+        body: JSON.stringify({
+          ...medicineForm,
+          action: editingMedicineId ? "update" : "create",
+          id: editingMedicineId,
+          babyId: selectedBabyId,
+        }),
       });
       setMedicineForm(blankMedicine);
+      setEditingMedicineId("");
       await loadMedicines(selectedBabyId);
       setStatus(t.medSaved);
     } catch {
@@ -462,6 +478,18 @@ function App() {
     } catch {
       setError(t.medError);
     }
+  }
+
+  function editMedicine(medicine) {
+    setEditingMedicineId(medicine.id);
+    setMedicineForm({
+      name: medicine.name || "",
+      dose: medicine.dose || "",
+      timesPerDay: medicine.times_per_day || 1,
+      durationDays: medicine.duration_days || 1,
+      startDate: medicine.start_date || todayKey(),
+      startTime: medicine.start_time || "08:00",
+    });
   }
 
   const summary = useMemo(() => Object.keys(entryTypes).reduce((acc, type) => {
@@ -557,7 +585,7 @@ function App() {
       {view === "today" ? (
         <TodayView activeConfig={activeConfig} activeType={activeType} entries={sortedEntries} form={form} isBusy={isBusy} language={language} onAdd={addEntry} onRemove={removeEntry} onReset={resetDay} setActiveType={setActiveType} setForm={setForm} summary={summary} t={t} />
       ) : (
-        <MedicineView deleteMedicine={deleteMedicine} dueDoses={dueDoses} isBusy={isBusy} markDoseTaken={markDoseTaken} medicineForm={medicineForm} medicines={medicines} setMedicineForm={setMedicineForm} submit={addMedicine} t={t} />
+        <MedicineView deleteMedicine={deleteMedicine} editMedicine={editMedicine} editingMedicineId={editingMedicineId} dueDoses={dueDoses} isBusy={isBusy} markDoseTaken={markDoseTaken} medicineForm={medicineForm} medicines={medicines} setEditingMedicineId={setEditingMedicineId} setMedicineForm={setMedicineForm} submit={saveMedicine} t={t} />
       )}
     </main>
   );
@@ -606,7 +634,7 @@ function TodayView({ activeConfig, activeType, entries, form, isBusy, language, 
   );
 }
 
-function MedicineView({ deleteMedicine, dueDoses, isBusy, markDoseTaken, medicineForm, medicines, setMedicineForm, submit, t }) {
+function MedicineView({ deleteMedicine, editMedicine, editingMedicineId, dueDoses, isBusy, markDoseTaken, medicineForm, medicines, setEditingMedicineId, setMedicineForm, submit, t }) {
   return (
     <section className="medicine-page">
       <form className="medicine-form" onSubmit={submit}>
@@ -614,9 +642,11 @@ function MedicineView({ deleteMedicine, dueDoses, isBusy, markDoseTaken, medicin
         <label><span>{t.medicineName}</span><input required value={medicineForm.name} onChange={(event) => setMedicineForm((current) => ({ ...current, name: event.target.value }))} /></label>
         <label><span>{t.dose}</span><input required value={medicineForm.dose} onChange={(event) => setMedicineForm((current) => ({ ...current, dose: event.target.value }))} /></label>
         <label><span>{t.timesPerDay}</span><input min="1" max="12" type="number" value={medicineForm.timesPerDay} onChange={(event) => setMedicineForm((current) => ({ ...current, timesPerDay: event.target.value }))} /></label>
-        <label><span>{t.intervalHours}</span><input min="1" max="24" type="number" value={medicineForm.intervalHours} onChange={(event) => setMedicineForm((current) => ({ ...current, intervalHours: event.target.value }))} /></label>
+        <label><span>{t.startDate}</span><input type="date" value={medicineForm.startDate} onChange={(event) => setMedicineForm((current) => ({ ...current, startDate: event.target.value }))} /></label>
+        <label><span>{t.durationDays}</span><input min="1" max="365" type="number" value={medicineForm.durationDays} onChange={(event) => setMedicineForm((current) => ({ ...current, durationDays: event.target.value }))} /></label>
         <label><span>{t.firstTime}</span><input type="time" value={medicineForm.startTime} onChange={(event) => setMedicineForm((current) => ({ ...current, startTime: event.target.value }))} /></label>
-        <button className="primary-action" type="submit" disabled={isBusy}><Plus size={20} />{t.addMedicine}</button>
+        <button className="primary-action" type="submit" disabled={isBusy}><Plus size={20} />{editingMedicineId ? t.updateMedicine : t.addMedicine}</button>
+        {editingMedicineId && <button className="ghost-action" type="button" onClick={() => { setEditingMedicineId(""); setMedicineForm(blankMedicine); }}>{t.cancel}</button>}
       </form>
 
       <section className="medicine-list-panel">
@@ -626,7 +656,7 @@ function MedicineView({ deleteMedicine, dueDoses, isBusy, markDoseTaken, medicin
 
       <section className="medicine-list-panel">
         <div className="section-title"><Pill size={20} /><h2>{t.activeMeds}</h2></div>
-        {medicines.length === 0 ? <div className="empty-state compact-empty"><p>{t.noMeds}</p></div> : <div className="event-list">{medicines.map((medicine) => <article className="medicine-card" key={medicine.id}><div><strong>{medicine.name}</strong><span>{medicine.dose} - {t.timesPerDay}: {medicine.times_per_day} - {t.intervalHours}: {medicine.interval_hours}</span><small>{t.firstTime}: {medicine.start_time}</small></div><button className="icon-button" type="button" aria-label={t.deleteMed} onClick={() => deleteMedicine(medicine.id)}><Trash2 size={18} /></button></article>)}</div>}
+        {medicines.length === 0 ? <div className="empty-state compact-empty"><p>{t.noMeds}</p></div> : <div className="event-list">{medicines.map((medicine) => <article className="medicine-card" key={medicine.id}><div><strong>{medicine.name}</strong><span>{medicine.dose} - {t.timesPerDay}: {medicine.times_per_day} - {t.durationDays}: {medicine.duration_days}</span><small>{t.startDate}: {medicine.start_date} - {t.firstTime}: {medicine.start_time}</small></div><div className="baby-actions"><button className="icon-button" type="button" aria-label={t.editMedicine} onClick={() => editMedicine(medicine)}><Pencil size={18} /></button><button className="icon-button" type="button" aria-label={t.deleteMed} onClick={() => deleteMedicine(medicine.id)}><Trash2 size={18} /></button></div></article>)}</div>}
       </section>
     </section>
   );

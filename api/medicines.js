@@ -1,8 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getSessionUser, sql } from "./_auth.js";
 
-const DAYS_TO_SCHEDULE = 14;
-
 export default async function handler(request, response) {
   if (!process.env.DATABASE_URL) {
     return response.status(500).json({ error: "DATABASE_URL is not configured." });
@@ -23,6 +21,10 @@ export default async function handler(request, response) {
     }
 
     if (request.method === "PUT") {
+      if (request.body?.action === "update") {
+        return updateMedicine(request, response, user);
+      }
+
       return markDoseTaken(request, response, user);
     }
 
@@ -45,7 +47,14 @@ async function getMedicines(request, response, user) {
   }
 
   const medicines = await sql`
-    select id, name, dose, times_per_day, interval_hours, to_char(start_time, 'HH24:MI') as start_time
+    select
+      id,
+      name,
+      dose,
+      times_per_day,
+      duration_days,
+      to_char(start_date, 'YYYY-MM-DD') as start_date,
+      to_char(start_time, 'HH24:MI') as start_time
     from newborn_medicines
     where user_id = ${user.id} and baby_id = ${babyId}
     order by created_at desc
@@ -81,7 +90,7 @@ async function createMedicine(request, response, user) {
   const medicineId = randomUUID();
   const rows = await sql`
     insert into newborn_medicines (
-      id, user_id, baby_id, name, dose, times_per_day, interval_hours, start_time
+      id, user_id, baby_id, name, dose, times_per_day, interval_hours, duration_days, start_date, start_time
     )
     values (
       ${medicineId},
@@ -91,9 +100,11 @@ async function createMedicine(request, response, user) {
       ${medicine.dose},
       ${medicine.timesPerDay},
       ${medicine.intervalHours},
+      ${medicine.durationDays},
+      ${medicine.startDate},
       ${medicine.startTime}
     )
-    returning id, name, dose, times_per_day, interval_hours, to_char(start_time, 'HH24:MI') as start_time
+    returning id, name, dose, times_per_day, duration_days, to_char(start_date, 'YYYY-MM-DD') as start_date, to_char(start_time, 'HH24:MI') as start_time
   `;
 
   const schedule = buildSchedule(medicine);
@@ -105,6 +116,54 @@ async function createMedicine(request, response, user) {
   }
 
   return response.status(201).json({ medicine: rows[0] });
+}
+
+async function updateMedicine(request, response, user) {
+  const medicineId = String(request.body?.id || "");
+  const babyId = String(request.body?.babyId || "");
+  const medicine = normalizeMedicine(request.body);
+
+  if (!medicineId || !babyId || !medicine || !(await canUseBaby(user.id, babyId))) {
+    return response.status(400).json({ error: "Valid medicine details are required." });
+  }
+
+  const rows = await sql`
+    update newborn_medicines
+    set
+      name = ${medicine.name},
+      dose = ${medicine.dose},
+      times_per_day = ${medicine.timesPerDay},
+      interval_hours = ${medicine.intervalHours},
+      duration_days = ${medicine.durationDays},
+      start_date = ${medicine.startDate},
+      start_time = ${medicine.startTime},
+      updated_at = now()
+    where id = ${medicineId}
+      and user_id = ${user.id}
+      and baby_id = ${babyId}
+    returning id, name, dose, times_per_day, duration_days, to_char(start_date, 'YYYY-MM-DD') as start_date, to_char(start_time, 'HH24:MI') as start_time
+  `;
+
+  if (!rows[0]) {
+    return response.status(404).json({ error: "Medicine not found." });
+  }
+
+  await sql`
+    delete from newborn_medicine_doses
+    where medicine_id = ${medicineId}
+      and user_id = ${user.id}
+      and taken_at is null
+  `;
+
+  const schedule = buildSchedule(medicine);
+  for (const scheduledAt of schedule) {
+    await sql`
+      insert into newborn_medicine_doses (id, medicine_id, user_id, baby_id, scheduled_at)
+      values (${randomUUID()}, ${medicineId}, ${user.id}, ${babyId}, ${scheduledAt.toISOString()})
+    `;
+  }
+
+  return response.status(200).json({ medicine: rows[0] });
 }
 
 async function markDoseTaken(request, response, user) {
@@ -164,21 +223,23 @@ function normalizeMedicine(body) {
   const name = String(body?.name || "").trim().slice(0, 100);
   const dose = String(body?.dose || "").trim().slice(0, 80);
   const timesPerDay = clamp(Number(body?.timesPerDay || 1), 1, 12);
-  const intervalHours = clamp(Number(body?.intervalHours || Math.floor(24 / timesPerDay)), 1, 24);
+  const intervalHours = Math.max(1, Math.floor(24 / timesPerDay));
+  const durationDays = clamp(Number(body?.durationDays || 1), 1, 365);
+  const startDate = normalizeDate(body?.startDate) || new Date().toISOString().slice(0, 10);
   const startTime = normalizeTime(body?.startTime);
 
   if (!name || !dose || !startTime) return null;
-  return { name, dose, timesPerDay, intervalHours, startTime };
+  return { name, dose, timesPerDay, intervalHours, durationDays, startDate, startTime };
 }
 
 function buildSchedule(medicine) {
   const [hours, minutes] = medicine.startTime.split(":").map(Number);
+  const [year, month, dayOfMonth] = medicine.startDate.split("-").map(Number);
   const schedule = [];
-  const start = new Date();
-  start.setUTCHours(hours, minutes, 0, 0);
+  const start = new Date(Date.UTC(year, month - 1, dayOfMonth, hours, minutes, 0, 0));
 
   const end = new Date(start);
-  end.setUTCDate(end.getUTCDate() + DAYS_TO_SCHEDULE);
+  end.setUTCDate(end.getUTCDate() + medicine.durationDays);
 
   for (let day = new Date(start); day < end; day.setUTCDate(day.getUTCDate() + 1)) {
     const dailyLimit = medicine.timesPerDay;
@@ -207,6 +268,11 @@ async function canUseBaby(userId, babyId) {
 function normalizeTime(value) {
   const text = String(value || "");
   return /^\d{2}:\d{2}$/.test(text) ? text : "";
+}
+
+function normalizeDate(value) {
+  const text = String(value || "");
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : "";
 }
 
 function clamp(value, min, max) {

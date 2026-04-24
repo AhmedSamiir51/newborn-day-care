@@ -145,6 +145,8 @@ await sql`
     dose text not null,
     times_per_day int not null default 1,
     interval_hours int not null default 24,
+    duration_days int not null default 1,
+    start_date date not null default current_date,
     start_time time not null,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
@@ -171,6 +173,16 @@ await sql`
 await sql`
   create index if not exists newborn_medicine_doses_due_idx
   on newborn_medicine_doses (user_id, baby_id, taken_at, scheduled_at)
+`;
+
+await sql`
+  alter table newborn_medicines
+  add column if not exists duration_days int not null default 1
+`;
+
+await sql`
+  alter table newborn_medicines
+  add column if not exists start_date date not null default current_date
 `;
 
 console.log("Neon database is ready.");
