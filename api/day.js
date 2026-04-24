@@ -40,15 +40,14 @@ async function getDay(request, response) {
   }
 
   const careDate = readCareDate(request);
+  const babyId = readBabyId(request);
   if (!careDate) {
     return response.status(400).json({ error: "A valid care date is required." });
   }
 
-  const profileRows = await sql`
-    select baby_name
-    from newborn_user_profiles
-    where user_id = ${user.id}
-  `;
+  if (!babyId || !(await canUseBaby(user.id, babyId))) {
+    return response.status(400).json({ error: "A valid baby is required." });
+  }
 
   const entries = await sql`
     select
@@ -59,12 +58,12 @@ async function getDay(request, response) {
       note
     from newborn_user_events
     where user_id = ${user.id}
+      and baby_id = ${babyId}
       and care_date = ${careDate}
     order by event_time desc, created_at desc
   `;
 
   return response.status(200).json({
-    babyName: profileRows[0]?.baby_name || "Baby girl",
     entries,
   });
 }
@@ -77,19 +76,20 @@ async function createEntry(request, response) {
 
   const body = request.body || {};
   const careDate = normalizeDate(body.careDate);
+  const babyId = String(body.babyId || "");
   const entry = normalizeEntry(body.entry);
 
-  if (!careDate || !entry) {
-    return response.status(400).json({ error: "A valid entry and care date are required." });
+  if (!careDate || !babyId || !entry || !(await canUseBaby(user.id, babyId))) {
+    return response.status(400).json({ error: "A valid baby, entry, and care date are required." });
   }
 
   const rows = await sql.query(
     `
-      insert into newborn_user_events (id, user_id, care_date, type, event_time, details, note)
-      values ($1, $2, $3, $4, $5, $6::jsonb, $7)
+      insert into newborn_user_events (id, user_id, baby_id, care_date, type, event_time, details, note)
+      values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)
       returning id, type, to_char(event_time, 'HH24:MI') as time, details, note
     `,
-    [entry.id, user.id, careDate, entry.type, entry.time, JSON.stringify(entry.details), entry.note]
+    [entry.id, user.id, babyId, careDate, entry.type, entry.time, JSON.stringify(entry.details), entry.note]
   );
 
   return response.status(201).json({ entry: rows[0] });
@@ -101,17 +101,7 @@ async function updateProfile(request, response) {
     return response.status(401).json({ error: "Login required." });
   }
 
-  const babyName = String(request.body?.babyName || "").trim().slice(0, 80) || "Baby girl";
-
-  const rows = await sql`
-    insert into newborn_user_profiles (user_id, baby_name, updated_at)
-    values (${user.id}, ${babyName}, now())
-    on conflict (user_id)
-    do update set baby_name = excluded.baby_name, updated_at = now()
-    returning baby_name
-  `;
-
-  return response.status(200).json({ babyName: rows[0].baby_name });
+  return response.status(410).json({ error: "Use /api/babies to update baby details." });
 }
 
 async function deleteEntryOrDay(request, response) {
@@ -123,14 +113,15 @@ async function deleteEntryOrDay(request, response) {
   const url = new URL(request.url, `https://${request.headers.host || "localhost"}`);
   const id = url.searchParams.get("id");
   const careDate = normalizeDate(url.searchParams.get("date"));
+  const babyId = url.searchParams.get("babyId");
 
   if (id) {
     await sql`delete from newborn_user_events where user_id = ${user.id} and id = ${id}`;
     return response.status(204).end();
   }
 
-  if (careDate) {
-    await sql`delete from newborn_user_events where user_id = ${user.id} and care_date = ${careDate}`;
+  if (careDate && babyId && await canUseBaby(user.id, babyId)) {
+    await sql`delete from newborn_user_events where user_id = ${user.id} and baby_id = ${babyId} and care_date = ${careDate}`;
     return response.status(204).end();
   }
 
@@ -140,6 +131,21 @@ async function deleteEntryOrDay(request, response) {
 function readCareDate(request) {
   const url = new URL(request.url, `https://${request.headers.host || "localhost"}`);
   return normalizeDate(url.searchParams.get("date"));
+}
+
+function readBabyId(request) {
+  const url = new URL(request.url, `https://${request.headers.host || "localhost"}`);
+  return url.searchParams.get("babyId");
+}
+
+async function canUseBaby(userId, babyId) {
+  const rows = await sql`
+    select 1
+    from newborn_babies
+    where id = ${babyId} and user_id = ${userId}
+    limit 1
+  `;
+  return Boolean(rows[0]);
 }
 
 function normalizeDate(value) {

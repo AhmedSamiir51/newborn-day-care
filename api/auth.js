@@ -78,6 +78,11 @@ async function register(request, response) {
     on conflict (user_id) do nothing
   `;
 
+  await sql`
+    insert into newborn_babies (id, user_id, name, age, gender)
+    values (${randomUUID()}, ${userId}, 'Baby girl', '', 'girl')
+  `;
+
   const token = await createUserSession(userId);
   response.setHeader("Set-Cookie", sessionCookie(token, request));
   return response.status(201).json({ user: rows[0] });

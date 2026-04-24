@@ -71,6 +71,23 @@ await sql`
 `;
 
 await sql`
+  create table if not exists newborn_babies (
+    id uuid primary key,
+    user_id uuid not null references newborn_users(id) on delete cascade,
+    name text not null,
+    age text not null default '',
+    gender text not null check (gender in ('girl', 'boy', 'other')),
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+  )
+`;
+
+await sql`
+  create index if not exists newborn_babies_user_idx
+  on newborn_babies (user_id, created_at)
+`;
+
+await sql`
   create table if not exists newborn_user_events (
     id text primary key,
     user_id uuid not null references newborn_users(id) on delete cascade,
@@ -84,8 +101,39 @@ await sql`
 `;
 
 await sql`
+  alter table newborn_user_events
+  add column if not exists baby_id uuid references newborn_babies(id) on delete cascade
+`;
+
+await sql`
   create index if not exists newborn_user_events_user_date_time_idx
   on newborn_user_events (user_id, care_date, event_time desc, created_at desc)
+`;
+
+await sql`
+  create index if not exists newborn_user_events_baby_date_time_idx
+  on newborn_user_events (user_id, baby_id, care_date, event_time desc, created_at desc)
+`;
+
+await sql`
+  insert into newborn_babies (id, user_id, name, age, gender)
+  select gen_random_uuid(), p.user_id, p.baby_name, '', 'girl'
+  from newborn_user_profiles p
+  where not exists (
+    select 1 from newborn_babies b where b.user_id = p.user_id
+  )
+`;
+
+await sql`
+  update newborn_user_events e
+  set baby_id = b.id
+  from (
+    select distinct on (user_id) id, user_id
+    from newborn_babies
+    order by user_id, created_at asc
+  ) b
+  where e.user_id = b.user_id
+    and e.baby_id is null
 `;
 
 console.log("Neon database is ready.");

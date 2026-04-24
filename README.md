@@ -1,6 +1,6 @@
 # Newborn Day Care
 
-A gentle one-day care tracker for a newborn baby girl. It supports Arabic and English, email/password registration, login sessions, and per-user feedings, diaper changes, medicine, sleep, and notes stored in Neon Postgres through Vercel API routes.
+A gentle one-day care tracker for newborn care. It supports Arabic and English, email/password registration, multiple babies per user, baby name/age/gender profiles, and per-baby feedings, diaper changes, medicine, sleep, and notes stored in Neon Postgres through Vercel API routes.
 
 ## Run locally
 
