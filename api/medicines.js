@@ -42,13 +42,20 @@ export default async function handler(request, response) {
 
 async function getMedicines(request, response, user) {
   const babyId = readBabyId(request);
-  if (!babyId || !(await canUseBaby(user.id, babyId))) {
+  const ownerType = readOwnerType(request, "baby");
+  if (!["baby", "mother", "all"].includes(ownerType)) {
+    return response.status(400).json({ error: "A valid medicine owner is required." });
+  }
+
+  if (ownerType === "baby" && (!babyId || !(await canUseBaby(user.id, babyId)))) {
     return response.status(400).json({ error: "A valid baby is required." });
   }
 
   const medicines = await sql`
     select
       id,
+      baby_id,
+      owner_type,
       name,
       dose,
       times_per_day,
@@ -56,24 +63,35 @@ async function getMedicines(request, response, user) {
       to_char(start_date, 'YYYY-MM-DD') as start_date,
       to_char(start_time, 'HH24:MI') as start_time
     from newborn_medicines
-    where user_id = ${user.id} and baby_id = ${babyId}
+    where user_id = ${user.id}
+      and (
+        ${ownerType} = 'all'
+        or (${ownerType} = 'mother' and owner_type = 'mother')
+        or (${ownerType} = 'baby' and owner_type = 'baby' and baby_id = ${babyId})
+      )
     order by created_at desc
   `;
 
   const dueDoses = await sql`
-    select
+    select distinct on (d.medicine_id)
       d.id,
       d.medicine_id,
+      d.baby_id,
+      d.owner_type,
       m.name,
       m.dose,
       to_char(d.scheduled_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as scheduled_at
     from newborn_medicine_doses d
     join newborn_medicines m on m.id = d.medicine_id
     where d.user_id = ${user.id}
-      and d.baby_id = ${babyId}
+      and (
+        ${ownerType} = 'all'
+        or (${ownerType} = 'mother' and d.owner_type = 'mother')
+        or (${ownerType} = 'baby' and d.owner_type = 'baby' and d.baby_id = ${babyId})
+      )
       and d.taken_at is null
       and d.scheduled_at <= now()
-    order by d.scheduled_at asc
+    order by d.medicine_id, d.scheduled_at asc
   `;
 
   return response.status(200).json({ medicines, dueDoses });
@@ -81,21 +99,23 @@ async function getMedicines(request, response, user) {
 
 async function createMedicine(request, response, user) {
   const babyId = String(request.body?.babyId || "");
+  const ownerType = normalizeOwnerType(request.body?.ownerType);
   const medicine = normalizeMedicine(request.body);
 
-  if (!babyId || !medicine || !(await canUseBaby(user.id, babyId))) {
+  if (!ownerType || !medicine || (ownerType === "baby" && (!babyId || !(await canUseBaby(user.id, babyId))))) {
     return response.status(400).json({ error: "Valid medicine details are required." });
   }
 
   const medicineId = randomUUID();
   const rows = await sql`
     insert into newborn_medicines (
-      id, user_id, baby_id, name, dose, times_per_day, interval_hours, duration_days, start_date, start_time
+      id, user_id, baby_id, owner_type, name, dose, times_per_day, interval_hours, duration_days, start_date, start_time
     )
     values (
       ${medicineId},
       ${user.id},
-      ${babyId},
+      ${ownerType === "baby" ? babyId : null},
+      ${ownerType},
       ${medicine.name},
       ${medicine.dose},
       ${medicine.timesPerDay},
@@ -104,14 +124,14 @@ async function createMedicine(request, response, user) {
       ${medicine.startDate},
       ${medicine.startTime}
     )
-    returning id, name, dose, times_per_day, duration_days, to_char(start_date, 'YYYY-MM-DD') as start_date, to_char(start_time, 'HH24:MI') as start_time
+    returning id, baby_id, owner_type, name, dose, times_per_day, duration_days, to_char(start_date, 'YYYY-MM-DD') as start_date, to_char(start_time, 'HH24:MI') as start_time
   `;
 
   const schedule = buildSchedule(medicine);
   for (const scheduledAt of schedule) {
     await sql`
-      insert into newborn_medicine_doses (id, medicine_id, user_id, baby_id, scheduled_at)
-      values (${randomUUID()}, ${medicineId}, ${user.id}, ${babyId}, ${scheduledAt.toISOString()})
+      insert into newborn_medicine_doses (id, medicine_id, user_id, baby_id, owner_type, scheduled_at)
+      values (${randomUUID()}, ${medicineId}, ${user.id}, ${ownerType === "baby" ? babyId : null}, ${ownerType}, ${scheduledAt.toISOString()})
     `;
   }
 
@@ -121,15 +141,18 @@ async function createMedicine(request, response, user) {
 async function updateMedicine(request, response, user) {
   const medicineId = String(request.body?.id || "");
   const babyId = String(request.body?.babyId || "");
+  const ownerType = normalizeOwnerType(request.body?.ownerType);
   const medicine = normalizeMedicine(request.body);
 
-  if (!medicineId || !babyId || !medicine || !(await canUseBaby(user.id, babyId))) {
+  if (!medicineId || !ownerType || !medicine || (ownerType === "baby" && (!babyId || !(await canUseBaby(user.id, babyId))))) {
     return response.status(400).json({ error: "Valid medicine details are required." });
   }
 
   const rows = await sql`
     update newborn_medicines
     set
+      baby_id = ${ownerType === "baby" ? babyId : null},
+      owner_type = ${ownerType},
       name = ${medicine.name},
       dose = ${medicine.dose},
       times_per_day = ${medicine.timesPerDay},
@@ -140,8 +163,7 @@ async function updateMedicine(request, response, user) {
       updated_at = now()
     where id = ${medicineId}
       and user_id = ${user.id}
-      and baby_id = ${babyId}
-    returning id, name, dose, times_per_day, duration_days, to_char(start_date, 'YYYY-MM-DD') as start_date, to_char(start_time, 'HH24:MI') as start_time
+    returning id, baby_id, owner_type, name, dose, times_per_day, duration_days, to_char(start_date, 'YYYY-MM-DD') as start_date, to_char(start_time, 'HH24:MI') as start_time
   `;
 
   if (!rows[0]) {
@@ -158,8 +180,8 @@ async function updateMedicine(request, response, user) {
   const schedule = buildSchedule(medicine);
   for (const scheduledAt of schedule) {
     await sql`
-      insert into newborn_medicine_doses (id, medicine_id, user_id, baby_id, scheduled_at)
-      values (${randomUUID()}, ${medicineId}, ${user.id}, ${babyId}, ${scheduledAt.toISOString()})
+      insert into newborn_medicine_doses (id, medicine_id, user_id, baby_id, owner_type, scheduled_at)
+      values (${randomUUID()}, ${medicineId}, ${user.id}, ${ownerType === "baby" ? babyId : null}, ${ownerType}, ${scheduledAt.toISOString()})
     `;
   }
 
@@ -188,7 +210,7 @@ async function markDoseTaken(request, response, user) {
   `;
 
   const medicine = medicineRows[0];
-  if (medicine) {
+  if (medicine && rows[0].baby_id) {
     await sql.query(
       `
         insert into newborn_user_events (id, user_id, baby_id, care_date, type, event_time, details, note)
@@ -227,9 +249,10 @@ function normalizeMedicine(body) {
   const durationDays = clamp(Number(body?.durationDays || 1), 1, 365);
   const startDate = normalizeDate(body?.startDate) || new Date().toISOString().slice(0, 10);
   const startTime = normalizeTime(body?.startTime);
+  const timezoneOffsetMinutes = clamp(Number(body?.timezoneOffsetMinutes || 0), -840, 840);
 
   if (!name || !dose || !startTime) return null;
-  return { name, dose, timesPerDay, intervalHours, durationDays, startDate, startTime };
+  return { name, dose, timesPerDay, intervalHours, durationDays, startDate, startTime, timezoneOffsetMinutes };
 }
 
 function buildSchedule(medicine) {
@@ -246,6 +269,7 @@ function buildSchedule(medicine) {
     for (let doseIndex = 0; doseIndex < dailyLimit; doseIndex += 1) {
       const doseTime = new Date(day);
       doseTime.setUTCHours(hours + doseIndex * medicine.intervalHours, minutes, 0, 0);
+      doseTime.setUTCMinutes(doseTime.getUTCMinutes() + medicine.timezoneOffsetMinutes);
       if (doseTime < end) schedule.push(doseTime);
     }
   }
@@ -256,6 +280,16 @@ function buildSchedule(medicine) {
 function readBabyId(request) {
   const url = new URL(request.url, `https://${request.headers.host || "localhost"}`);
   return url.searchParams.get("babyId");
+}
+
+function readOwnerType(request, fallback = "baby") {
+  const url = new URL(request.url, `https://${request.headers.host || "localhost"}`);
+  return normalizeOwnerType(url.searchParams.get("ownerType")) || fallback;
+}
+
+function normalizeOwnerType(value) {
+  const text = String(value || "baby");
+  return ["baby", "mother", "all"].includes(text) ? text : "";
 }
 
 async function canUseBaby(userId, babyId) {

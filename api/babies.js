@@ -65,11 +65,6 @@ export default async function handler(request, response) {
         return response.status(400).json({ error: "Baby id is required." });
       }
 
-      const countRows = await sql`select count(*)::int as count from newborn_babies where user_id = ${user.id}`;
-      if ((countRows[0]?.count || 0) <= 1) {
-        return response.status(400).json({ error: "At least one baby is required." });
-      }
-
       await sql`delete from newborn_babies where id = ${id} and user_id = ${user.id}`;
       return response.status(204).end();
     }

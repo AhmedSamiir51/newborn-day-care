@@ -49,6 +49,44 @@ button:disabled {
   padding: 28px 0;
 }
 
+.pull-refresh {
+  position: fixed;
+  top: -46px;
+  left: 50%;
+  translate: -50% 0;
+  z-index: 15;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(38, 127, 143, 0.18);
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 12px 30px rgba(28, 31, 42, 0.12);
+  color: #165c67;
+  font-size: 0.88rem;
+  font-weight: 800;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.pull-refresh.ready,
+.refreshing .pull-refresh {
+  opacity: 1;
+}
+
+.refreshing .pull-refresh svg {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .topbar,
 .baby-panel,
 .logger,
@@ -154,6 +192,36 @@ h2 {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 14px 36px rgba(28, 31, 42, 0.08);
+}
+
+.mother-panel {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 18px;
+  border: 1px solid rgba(28, 31, 42, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 14px 36px rgba(28, 31, 42, 0.08);
+}
+
+.mother-details {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid rgba(28, 31, 42, 0.08);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.mother-details strong {
+  font-size: 1.2rem;
+}
+
+.mother-details span,
+.mother-details small {
+  color: #625c66;
+  overflow-wrap: anywhere;
 }
 
 .baby-list {
@@ -265,6 +333,34 @@ h2 {
 
 .view-tabs button.active svg {
   color: currentColor;
+}
+
+.owner-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 4px;
+  border-radius: 8px;
+  background: #f4f0ea;
+}
+
+.owner-toggle button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #514b54;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.owner-toggle button.active {
+  background: #20232d;
+  color: #ffffff;
 }
 
 .modal-backdrop {

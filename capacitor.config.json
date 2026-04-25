@@ -1,0 +1,9 @@
+{
+  "appId": "com.newborndaycare.app",
+  "appName": "Newborn Day Care",
+  "webDir": "dist",
+  "server": {
+    "url": "https://newborn-day-care.vercel.app",
+    "cleartext": false
+  }
+}

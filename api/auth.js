@@ -59,28 +59,24 @@ export default async function handler(request, response) {
 async function register(request, response) {
   const email = normalizeEmail(request.body?.email);
   const name = normalizeName(request.body?.name) || "Mama";
+  const age = String(request.body?.age || "").trim().slice(0, 40);
   const password = String(request.body?.password || "");
 
-  if (!email || !isStrongEnoughPassword(password)) {
+  if (!email || !name || !isStrongEnoughPassword(password)) {
     return response.status(400).json({ error: "Valid email and password are required." });
   }
 
   const userId = randomUUID();
   const rows = await sql`
-    insert into newborn_users (id, email, name, password_hash)
-    values (${userId}, ${email}, ${name}, ${hashPassword(password)})
-    returning id, email, name
+    insert into newborn_users (id, email, name, age, password_hash)
+    values (${userId}, ${email}, ${name}, ${age}, ${hashPassword(password)})
+    returning id, email, name, age
   `;
 
   await sql`
     insert into newborn_user_profiles (user_id, baby_name)
-    values (${userId}, 'Baby girl')
+    values (${userId}, '')
     on conflict (user_id) do nothing
-  `;
-
-  await sql`
-    insert into newborn_babies (id, user_id, name, age, gender)
-    values (${randomUUID()}, ${userId}, 'Baby girl', '', 'girl')
   `;
 
   const token = await createUserSession(userId);
@@ -97,7 +93,7 @@ async function login(request, response) {
   }
 
   const rows = await sql`
-    select id, email, name, password_hash
+    select id, email, name, age, password_hash
     from newborn_users
     where email = ${email}
     limit 1
@@ -110,5 +106,5 @@ async function login(request, response) {
 
   const token = await createUserSession(user.id);
   response.setHeader("Set-Cookie", sessionCookie(token, request));
-  return response.status(200).json({ user: { id: user.id, email: user.email, name: user.name } });
+  return response.status(200).json({ user: { id: user.id, email: user.email, name: user.name, age: user.age || "" } });
 }

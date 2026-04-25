@@ -42,9 +42,15 @@ await sql`
     id uuid primary key,
     email text not null unique,
     name text not null,
+    age text not null default '',
     password_hash text not null,
     created_at timestamptz not null default now()
   )
+`;
+
+await sql`
+  alter table newborn_users
+  add column if not exists age text not null default ''
 `;
 
 await sql`
@@ -140,7 +146,8 @@ await sql`
   create table if not exists newborn_medicines (
     id uuid primary key,
     user_id uuid not null references newborn_users(id) on delete cascade,
-    baby_id uuid not null references newborn_babies(id) on delete cascade,
+    baby_id uuid references newborn_babies(id) on delete cascade,
+    owner_type text not null default 'baby' check (owner_type in ('baby', 'mother')),
     name text not null,
     dose text not null,
     times_per_day int not null default 1,
@@ -163,7 +170,8 @@ await sql`
     id uuid primary key,
     medicine_id uuid not null references newborn_medicines(id) on delete cascade,
     user_id uuid not null references newborn_users(id) on delete cascade,
-    baby_id uuid not null references newborn_babies(id) on delete cascade,
+    baby_id uuid references newborn_babies(id) on delete cascade,
+    owner_type text not null default 'baby' check (owner_type in ('baby', 'mother')),
     scheduled_at timestamptz not null,
     taken_at timestamptz,
     created_at timestamptz not null default now()
@@ -183,6 +191,36 @@ await sql`
 await sql`
   alter table newborn_medicines
   add column if not exists start_date date not null default current_date
+`;
+
+await sql`
+  alter table newborn_medicines
+  add column if not exists owner_type text not null default 'baby'
+`;
+
+await sql`
+  alter table newborn_medicine_doses
+  add column if not exists owner_type text not null default 'baby'
+`;
+
+await sql`
+  alter table newborn_medicines
+  alter column baby_id drop not null
+`;
+
+await sql`
+  alter table newborn_medicine_doses
+  alter column baby_id drop not null
+`;
+
+await sql`
+  create index if not exists newborn_medicines_owner_idx
+  on newborn_medicines (user_id, owner_type, created_at desc)
+`;
+
+await sql`
+  create index if not exists newborn_medicine_doses_owner_due_idx
+  on newborn_medicine_doses (user_id, owner_type, taken_at, scheduled_at)
 `;
 
 console.log("Neon database is ready.");

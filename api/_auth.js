@@ -12,7 +12,7 @@ export async function getSessionUser(request) {
 
   const tokenHash = hashToken(token);
   const rows = await sql`
-    select u.id, u.email, u.name
+    select u.id, u.email, u.name, u.age
     from newborn_sessions s
     join newborn_users u on u.id = s.user_id
     where s.token_hash = ${tokenHash}
