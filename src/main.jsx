@@ -8,8 +8,13 @@ import {
   CheckCircle2,
   Clock3,
   Droplets,
+  Eye,
+  EyeOff,
+  Heart,
   Languages,
+  Lock,
   LogOut,
+  Mail,
   Milk,
   Moon,
   NotebookPen,
@@ -17,6 +22,7 @@ import {
   Pill,
   Plus,
   RotateCcw,
+  ShieldCheck,
   Sparkles,
   Trash2,
   UserRound,
@@ -87,6 +93,19 @@ const copy = {
     password: "كلمة المرور",
     authTitle: "ادخلي لحسابك",
     authSubtitle: "كل حساب يرى بيانات أطفاله فقط.",
+    welcomeBack: "مرحبًا بعودتك",
+    welcomeNew: "ابدئي رحلتك معنا",
+    loginCopy: "سجلي الدخول لمتابعة يوم طفلك.",
+    registerCopy: "حساب واحد لكل أم، وبيانات أطفالك آمنة دائمًا.",
+    heroTagline: "متابعة لطيفة وآمنة لتفاصيل يوم طفلك",
+    heroFeatureFeed: "تتبعي الرضاعة والنوم والحفاضات",
+    heroFeatureMeds: "تذكيرات تلقائية لمواعيد الدواء",
+    heroFeaturePrivate: "بياناتك خاصة بكِ تمامًا",
+    showPassword: "إظهار كلمة المرور",
+    hidePassword: "إخفاء كلمة المرور",
+    emailPlaceholder: "you@example.com",
+    passwordPlaceholder: "••••••••",
+    namePlaceholder: "مثال: سارة محمد",
     createAccount: "إنشاء الحساب",
     enterAccount: "دخول",
     logout: "خروج",
@@ -179,6 +198,19 @@ const copy = {
     password: "Password",
     authTitle: "Enter your account",
     authSubtitle: "Each account only sees data for its own babies.",
+    welcomeBack: "Welcome back",
+    welcomeNew: "Start your journey",
+    loginCopy: "Sign in to keep tracking your baby's day.",
+    registerCopy: "One account per parent. Your data stays private.",
+    heroTagline: "Gentle, secure tracking for every detail of your baby's day",
+    heroFeatureFeed: "Track feeds, sleep, and diapers",
+    heroFeatureMeds: "Automatic medicine reminders",
+    heroFeaturePrivate: "Your data stays fully private",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
+    emailPlaceholder: "you@example.com",
+    passwordPlaceholder: "••••••••",
+    namePlaceholder: "e.g. Sara Mohamed",
     createAccount: "Create account",
     enterAccount: "Sign in",
     logout: "Logout",
@@ -930,24 +962,86 @@ function MedicineView({ deleteMedicine, editMedicine, editingMedicineId, dueDose
 }
 
 function AuthScreen({ authError, authForm, authMode, isBusy, isRtl, language, setAuthForm, setAuthMode, setLanguage, submitAuth, t }) {
+  const [showPassword, setShowPassword] = useState(false);
+  const isRegister = authMode === "register";
   return (
-    <main className="shell auth-shell" dir={isRtl ? "rtl" : "ltr"}>
-      <section className="auth-card">
-        <div className="auth-top"><div className="brand-mark" aria-hidden="true"><Baby size={28} /></div><button className="ghost-action" type="button" onClick={() => setLanguage(language === "ar" ? "en" : "ar")}><Languages size={17} />{t.language}</button></div>
-        <p className="eyebrow">{t.appName}</p>
-        <h1>{t.authTitle}</h1>
-        <p className="auth-copy">{t.authSubtitle}</p>
-        <div className="auth-tabs"><button className={authMode === "login" ? "active" : ""} type="button" onClick={() => setAuthMode("login")}>{t.signIn}</button><button className={authMode === "register" ? "active" : ""} type="button" onClick={() => setAuthMode("register")}>{t.register}</button></div>
-        <form className="auth-form" onSubmit={submitAuth}>
-          {authMode === "register" && <label><span>{t.name}</span><input required value={authForm.name} onChange={(event) => setAuthForm((current) => ({ ...current, name: event.target.value }))} /></label>}
-          {authMode === "register" && <label><span>{t.motherAge}</span><input value={authForm.age} placeholder={t.motherAgePlaceholder} onChange={(event) => setAuthForm((current) => ({ ...current, age: event.target.value }))} /></label>}
-          <label><span>{t.email}</span><input autoComplete="email" type="email" value={authForm.email} onChange={(event) => setAuthForm((current) => ({ ...current, email: event.target.value }))} /></label>
-          <label><span>{t.password}</span><input autoComplete={authMode === "register" ? "new-password" : "current-password"} minLength={6} type="password" value={authForm.password} onChange={(event) => setAuthForm((current) => ({ ...current, password: event.target.value }))} /></label>
-          <small>{t.passwordHint}</small>
-          {authError && <div className="auth-error">{authError}</div>}
-          <button className="primary-action" type="submit" disabled={isBusy}><UserRound size={20} />{authMode === "register" ? t.createAccount : t.enterAccount}</button>
-        </form>
-      </section>
+    <main className="auth-shell" dir={isRtl ? "rtl" : "ltr"}>
+      <div className="auth-layout">
+        <aside className="auth-hero" aria-hidden="true">
+          <div className="hero-blob hero-blob-1" />
+          <div className="hero-blob hero-blob-2" />
+          <div className="hero-blob hero-blob-3" />
+          <div className="hero-content">
+            <div className="hero-brand">
+              <div className="hero-mark"><Baby size={32} /></div>
+              <span className="hero-brand-name">{t.appName}</span>
+            </div>
+            <h2 className="hero-title">{t.heroTagline}</h2>
+            <ul className="hero-features">
+              <li><span className="hero-feature-icon"><Heart size={16} /></span>{t.heroFeatureFeed}</li>
+              <li><span className="hero-feature-icon"><Bell size={16} /></span>{t.heroFeatureMeds}</li>
+              <li><span className="hero-feature-icon"><ShieldCheck size={16} /></span>{t.heroFeaturePrivate}</li>
+            </ul>
+          </div>
+        </aside>
+        <section className="auth-card">
+          <div className="auth-top">
+            <div className="auth-top-brand"><div className="brand-mark" aria-hidden="true"><Baby size={22} /></div><span>{t.appName}</span></div>
+            <button className="ghost-action" type="button" onClick={() => setLanguage(language === "ar" ? "en" : "ar")}><Languages size={17} />{t.language}</button>
+          </div>
+          <div className="auth-headline">
+            <h1>{isRegister ? t.welcomeNew : t.welcomeBack}</h1>
+            <p className="auth-copy">{isRegister ? t.registerCopy : t.loginCopy}</p>
+          </div>
+          <div className="auth-tabs" data-mode={authMode}>
+            <span className="auth-tabs-indicator" aria-hidden="true" />
+            <button className={authMode === "login" ? "active" : ""} type="button" onClick={() => setAuthMode("login")}>{t.signIn}</button>
+            <button className={authMode === "register" ? "active" : ""} type="button" onClick={() => setAuthMode("register")}>{t.register}</button>
+          </div>
+          <form className="auth-form" onSubmit={submitAuth}>
+            {isRegister && (
+              <label>
+                <span>{t.name}</span>
+                <div className="input-wrap">
+                  <UserRound size={18} className="input-icon" aria-hidden="true" />
+                  <input required value={authForm.name} placeholder={t.namePlaceholder} onChange={(event) => setAuthForm((current) => ({ ...current, name: event.target.value }))} />
+                </div>
+              </label>
+            )}
+            {isRegister && (
+              <label>
+                <span>{t.motherAge}</span>
+                <div className="input-wrap">
+                  <CalendarDays size={18} className="input-icon" aria-hidden="true" />
+                  <input value={authForm.age} placeholder={t.motherAgePlaceholder} onChange={(event) => setAuthForm((current) => ({ ...current, age: event.target.value }))} />
+                </div>
+              </label>
+            )}
+            <label>
+              <span>{t.email}</span>
+              <div className="input-wrap">
+                <Mail size={18} className="input-icon" aria-hidden="true" />
+                <input autoComplete="email" type="email" placeholder={t.emailPlaceholder} value={authForm.email} onChange={(event) => setAuthForm((current) => ({ ...current, email: event.target.value }))} />
+              </div>
+            </label>
+            <label>
+              <span>{t.password}</span>
+              <div className="input-wrap">
+                <Lock size={18} className="input-icon" aria-hidden="true" />
+                <input autoComplete={isRegister ? "new-password" : "current-password"} minLength={6} type={showPassword ? "text" : "password"} placeholder={t.passwordPlaceholder} value={authForm.password} onChange={(event) => setAuthForm((current) => ({ ...current, password: event.target.value }))} />
+                <button type="button" className="input-toggle" aria-label={showPassword ? t.hidePassword : t.showPassword} onClick={() => setShowPassword((current) => !current)}>
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              <small>{t.passwordHint}</small>
+            </label>
+            {authError && <div className="auth-error">{authError}</div>}
+            <button className="primary-action auth-submit" type="submit" disabled={isBusy}>
+              <UserRound size={20} />{isRegister ? t.createAccount : t.enterAccount}
+            </button>
+          </form>
+        </section>
+      </div>
     </main>
   );
 }
